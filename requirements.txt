@@ -1,0 +1,16 @@
+# Core dev env (Windows, RTX 4050 6GB). torch installed separately from the CUDA index, see README.
+transformers>=4.51,<5
+accelerate
+peft
+datasets
+soundfile
+librosa
+jiwer
+jsonschema
+numpy
+pandas
+tqdm
+pyyaml
+sentencepiece
+protobuf
+pytest

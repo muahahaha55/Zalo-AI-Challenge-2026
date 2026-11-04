@@ -1,0 +1,6 @@
+# Cloud training / final Docker (Linux, A30). Not installable on native Windows.
+-r requirements.txt
+vllm
+xgrammar
+bitsandbytes
+trl
