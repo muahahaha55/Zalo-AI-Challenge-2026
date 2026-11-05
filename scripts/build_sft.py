@@ -37,6 +37,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tokenizer", default=None)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     a = ap.parse_args()
     items = [json.loads(l) for l in open(DATA / "train.jsonl", encoding="utf-8")]
     cat = load_catalog(DATA / "train_tools_catalog.json")
@@ -50,7 +51,12 @@ def main():
         dev_groups.add(gid)
         n += g.count(gid)
     OUT.mkdir(parents=True, exist_ok=True)
-    tr, dv = [], []
+    asr = {}
+    if a.asr_tag:
+        for l in open(OUT / f"asr_{a.asr_tag}_train.jsonl", encoding="utf-8"):
+            d = json.loads(l)
+            asr[d["path"]] = d["text"]
+    tr, dv, tra, dva = [], [], [], []
     for it, gi in zip(items, g):
         htexts = [h["audio_text"] for h in it["history"] if h["role"] == "user"]
         msgs = build_messages(it, cat, it["audio_text"], htexts)
@@ -61,7 +67,13 @@ def main():
         calls = it["label"]["tool_calls"]
         assert (msgs[-1]["content"] == END) == (not calls or calls[-1]["name"] != "sys.ask_missing_info"), it["id"]
         (dv if gi in dev_groups else tr).append({"id": it["id"], "messages": msgs})
-    for name, rows in (("sft_train", tr), ("sft_dev", dv)):
+        if asr:   # same targets, but the request and history turns are the ASR transcripts (noisy, as at inference)
+            at = asr[it["audio"]]
+            ah = [asr[h["audio"]] for h in it["history"] if h["role"] == "user"]
+            (dva if gi in dev_groups else tra).append({"id": it["id"], "messages": build_messages(it, cat, at, ah)})
+    for name, rows in (("sft_train", tr), ("sft_dev", dv), ("sft_train_asr", tra), ("sft_dev_asr", dva)):
+        if not rows:
+            continue
         with open(OUT / f"{name}.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")

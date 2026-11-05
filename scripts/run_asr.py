@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--tag", required=True)
     ap.add_argument("--split", required=True)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--ids", help="file with sample ids; only transcribe audio of those samples")
     ap.add_argument("--bs", type=int, default=8)
     a = ap.parse_args()
     torch.manual_seed(0)
@@ -35,6 +36,9 @@ def main():
 
     audio_root = DATA / a.split / "audio"
     paths = sorted(p.relative_to(DATA / a.split).as_posix() for p in audio_root.rglob("*.wav"))
+    if a.ids:
+        keep = set(Path(a.ids).read_text().split())
+        paths = [p for p in paths if p.split("/")[1] in keep]
     if a.limit:
         paths = paths[: a.limit]
     OUT.mkdir(parents=True, exist_ok=True)
