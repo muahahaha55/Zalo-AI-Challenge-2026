@@ -5,3 +5,15 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 outputs/
+.env
+.env.*
+*.pem
+id_rsa*
+id_ed25519*
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+*.ckpt
+wandb/

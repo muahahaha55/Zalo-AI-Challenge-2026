@@ -7,22 +7,32 @@ import unicodedata
 from pathlib import Path
 
 import jiwer
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+from lifemate.normalize import words_to_digits  # noqa: E402
 DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
 OUT = ROOT / "data" / "processed"
 
 
+NO_NUM = False
+
+
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFC", s).lower()
-    return " ".join(re.sub(r"[^\w\s]", " ", s).split())
+    s = " ".join(re.sub(r"[^\w\s]", " ", s).split())
+    return s if NO_NUM else words_to_digits(s)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", required=True)
     ap.add_argument("--dev-only", action="store_true")
+    ap.add_argument("--no-num", action="store_true", help="do not convert spoken numbers to digits")
     a = ap.parse_args()
+    global NO_NUM
+    NO_NUM = a.no_num
     hyp = {}
     for l in open(OUT / f"asr_{a.tag}_train.jsonl", encoding="utf-8"):
         d = json.loads(l)

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Enforces docs/RULES.md before every commit. Install: git config core.hooksPath .githooks
+PY=".venv/Scripts/python"; [ -x "$PY" ] || PY="python3"; [ -x "$PY" ] || PY="python"
+"$PY" -I -X utf8 scripts/check_compliance.py --staged || exit 1
+"$PY" -m pytest -q tests || exit 1

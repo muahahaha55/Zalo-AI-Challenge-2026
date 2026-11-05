@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/*_environment/**)",
+      "Read(**/state.json)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git commit*--no-verify*)",
+      "Bash(*_environment*)"
+    ]
+  }
+}

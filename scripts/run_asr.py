@@ -16,6 +16,12 @@ DATA = ROOT / "data" / "raw" / "train+public_test"
 OUT = ROOT / "data" / "processed"
 
 
+def degenerate(text: str) -> bool:
+    w = text.split()
+    g = [" ".join(w[i : i + 3]) for i in range(len(w) - 2)]
+    return bool(g) and max(g.count(x) for x in set(g)) >= 3
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
@@ -56,7 +62,14 @@ def main():
             feats = proc.feature_extractor(wavs, sampling_rate=16000, return_tensors="pt").input_features.cuda().half()
             with torch.no_grad():
                 ids = model.generate(feats, language="vi", task="transcribe", num_beams=1, do_sample=False, max_new_tokens=160)
-            for p, t in zip(batch, proc.batch_decode(ids, skip_special_tokens=True)):
+            texts = proc.batch_decode(ids, skip_special_tokens=True)
+            for k, t in enumerate(texts):  # guard against Whisper repetition loops: redo that item with an n-gram block
+                if degenerate(t):
+                    with torch.no_grad():
+                        ids1 = model.generate(feats[k : k + 1], language="vi", task="transcribe", num_beams=1, do_sample=False,
+                                              max_new_tokens=100, no_repeat_ngram_size=4)
+                    texts[k] = proc.batch_decode(ids1, skip_special_tokens=True)[0]
+            for p, t in zip(batch, texts):
                 fout.write(json.dumps({"path": p, "text": t.strip()}, ensure_ascii=False) + "\n")
             fout.flush()
             if (i // a.bs) % 10 == 0:
