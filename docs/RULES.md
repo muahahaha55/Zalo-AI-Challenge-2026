@@ -13,6 +13,7 @@ Mức: **CẤM** = vi phạm có thể bị loại hoặc gây thiệt hại kh�
 3. Dữ liệu tổng hợp **được** sinh bằng LLM/TTS ngoài **chỉ trong giai đoạn phát triển**, và **không** dùng các dịch vụ đó lúc inference.
    - **PHẢI** ghi lại nguồn, mô hình sinh và prompt vào `docs/EXPERIMENTS.md` hoặc `docs/DATA_PROVENANCE.md`.
    - **HỎI TRƯỚC** khi gửi bất kỳ nội dung nào của dữ liệu cuộc thi (audio, transcript, state, tool call) tới dịch vụ bên thứ ba (API LLM, TTS, nhận diện giọng nói đám mây, Kaggle Dataset công khai...). Mặc định: không gửi.
+   - **Ngoại lệ đã được đồng ý (2026-11-05): Kaggle riêng tư.** Được upload dữ liệu cuộc thi lên Kaggle Dataset và chạy trong Kaggle Notebook **chỉ khi cả dataset lẫn notebook ở chế độ Private**, Internet OFF khi có dữ liệu gắn vào. Không public, không chia sẻ, xóa dataset dữ liệu khi xong. Quy trình: `docs/KAGGLE.md`. Các dịch vụ khác vẫn phải hỏi trước.
 4. Dữ liệu train dùng để huấn luyện thì **được**. Nhãn train, `get_state()` chỉ dùng cho train, không bao giờ dùng lúc inference.
 
 ## 2. Luật thi lúc suy luận (inference) — vi phạm có thể bị loại

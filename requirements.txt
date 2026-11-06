@@ -1,5 +1,5 @@
 # Core dev env (Windows, RTX 4050 6GB). torch installed separately from the CUDA index, see README.
-transformers>=4.51,<5
+transformers>=4.56,<6
 accelerate
 peft
 datasets

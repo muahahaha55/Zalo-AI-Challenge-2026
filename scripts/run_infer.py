@@ -43,10 +43,12 @@ def main():
     ap.add_argument("--split", required=True)
     ap.add_argument("--ids")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--shard", help="K/N: process only samples K, K+N, ... (one process per GPU; merge with merge_shards.py)")
     ap.add_argument("--backend", choices=["oracle", "hf"], required=True)
     ap.add_argument("--model")
     ap.add_argument("--adapter")
     ap.add_argument("--text", default="clean")
+    ap.add_argument("--no-rules", action="store_true", help="disable the deterministic post-processing (src/lifemate/rules.py)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     random.seed(0)
@@ -60,6 +62,9 @@ def main():
         items = [i for i in items if i["id"] in keep]
     if a.limit:
         items = items[: a.limit]
+    if a.shard:
+        k, n = map(int, a.shard.split("/"))
+        items = items[k::n]
     asr = {}
     if a.text.startswith("asr:"):
         for l in open(ROOT / "data" / "processed" / f"asr_{a.text[4:]}_{a.split}.jsonl", encoding="utf-8"):
@@ -78,7 +83,7 @@ def main():
                 htexts = [h["audio_text"] for h in it["history"] if h["role"] == "user"]
             env = ToolEnv(a.split, it["id"], root=str(DATA))        # exactly one env per sample
             g = OracleBackend(build_messages(it, cat, transcript, htexts)) if a.backend == "oracle" else gen
-            calls, h = run_sample(it, env, cat, transcript, htexts, g)
+            calls, h = run_sample(it, env, cat, transcript, htexts, g, use_rules=not a.no_rules)
             times.append(time.time() - t0)
             fout.write(json.dumps({"id": it["id"], "tool_calls": calls, "state_hash": h}, ensure_ascii=False) + "\n")
             if n % 20 == 0:
