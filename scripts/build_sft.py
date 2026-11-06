@@ -3,6 +3,10 @@ Usage: python -I -X utf8 scripts/build_sft.py [--tokenizer Qwen/Qwen3-4B] [--asr
 Extra data (train split only, never dev) goes to SEPARATE files so the base files stay unchanged:
   --aug-oos N / --aug-variants K   sft_train_aug.jsonl  (see lifemate.augment.synthetic_samples)
   --hist-max N                     sft_train_hist.jsonl (earlier turns of train samples' history, see lifemate.augment.history_samples)
+  --retract-copies K / --retract-replace N / --retract-cancel M
+                                   sft_train_retract.jsonl: the real self-correction samples repeated K times (safe: real labels), plus N
+                                   "<short request>, à thôi, <real request>" and M "<short request>, à thôi khỏi" compositions that teach
+                                   ignoring what the speaker took back (lifemate.augment.retraction_*)
   --hold-apps a,b,c                'unseen apps' experiment: samples whose gold uses these apps become holdout/eval_ids.txt, the others
                                    lose the apps from their prompts; everything is written to data/processed/holdout/"""
 import argparse
@@ -13,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from lifemate.augment import history_samples, split_holdout, synthetic_samples  # noqa: E402
+from lifemate.augment import history_samples, retraction_oversample, retraction_samples, split_holdout, synthetic_samples  # noqa: E402
 from lifemate.grouping import near_duplicate_groups  # noqa: E402
 from lifemate.jsonl import read_jsonl, write_jsonl  # noqa: E402
 from lifemate.paths import processed_dir, split_dir  # noqa: E402
@@ -54,6 +58,9 @@ def main():
     ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     ap.add_argument("--aug-oos", type=int, default=0)
     ap.add_argument("--aug-variants", type=int, default=0)
+    ap.add_argument("--retract-copies", type=int, default=0, help="repeat the real self-correction samples K times")
+    ap.add_argument("--retract-replace", type=int, default=0, help="N compositions '<retracted request>, <marker>, <real request>'")
+    ap.add_argument("--retract-cancel", type=int, default=0, help="M compositions '<request>, <marker> khỏi' (answer: no call)")
     ap.add_argument("--hold-apps", default="", help="comma-separated apps to hide from training ('unseen apps' experiment)")
     ap.add_argument("--hist-max", type=int, default=0, help="N: also write sft_train_hist.jsonl with up to N samples from train histories")
     a = ap.parse_args()
@@ -99,6 +106,12 @@ def main():
         hist, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
         write_jsonl(out / "sft_train_hist.jsonl", hist)
         print(f"history turns -> sft_train_hist.jsonl: {len(hist)} samples; candidates {st}")
+    if a.retract_copies or a.retract_replace or a.retract_cancel:
+        real = retraction_oversample(train_only, cat, asr, random.Random(a.seed + 4), a.retract_copies)
+        comp, st = retraction_samples(train_only, cat, random.Random(a.seed + 3), a.retract_replace, a.retract_cancel)
+        write_jsonl(out / "sft_train_retract.jsonl", real + comp)
+        print(f"retraction -> sft_train_retract.jsonl: {len(real) + len(comp)} samples "
+              f"({len(real)} real repeats, {st['replace']} replace, {st['cancel']} cancel)")
     (out / "dev_ids.txt").write_text("\n".join(r["id"] for r in rows["sft_dev"]) + "\n")
     print(f"groups={len(set(groups))} train={len(rows['sft_train'])} dev={len(rows['sft_dev'])} (dev groups={len(dev_groups)})")
 

@@ -38,6 +38,14 @@ python -I -X utf8 scripts/asr_wer.py --tag phowl_ft --dev-only # đã biết: 9,
 ```
 Gửi cả hai con số. Nếu WER trên train **thấp hơn nhiều** dev (ví dụ dưới 3%), giả thuyết đúng và ta sẽ làm ASR out-of-fold.
 
+### A1b. Thêm dữ liệu "lời rút lại" (làm sau A1, so với A1)
+Người nói tự sửa lời ("à khoan", "à thôi", "khỏi") chiếm 6,3% train, trong đó 31% là mẫu ngoài phạm vi. Trên dev các mẫu này chỉ đạt 40,6 điểm so với 67,6 của phần còn lại (chỉ 11 mẫu nên chưa chắc), model hay làm luôn phần đã bị rút lại. Dữ liệu gồm: các mẫu rút lại **thật** nhân bản 2 lần (nhãn thật, an toàn), cộng vài chục câu ghép "câu ngắn, à thôi, yêu cầu thật" và "câu ngắn, à thôi khỏi" (câu bị rút lại luôn là câu đơn, ngắn, không chứa sẵn dấu hiệu rút lại hay phủ định, để phạm vi "bỏ đi" không mơ hồ).
+```bash
+bash scripts/kaggle_pipeline.sh aug_data      # FORCE=1 nếu đã chạy; sinh thêm sft_train_retract.jsonl (khoảng 254 mẫu)
+SKIP_ASR=1 HIST=1 RETRACT=1 RUN=q4b_retract EPOCHS_SFT=3 SAVE_LIMIT=4 bash scripts/kaggle_pipeline.sh train
+```
+Chỉ giữ nếu dev tăng so với A1 và mẫu có lời rút lại không tệ đi (xem `scripts/compare_runs.py`). Để chỉ dùng mẫu thật, đặt `RETRACT_REPLACE=0 RETRACT_CANCEL=0` khi chạy `aug_data`.
+
 ### A3. Kiểm tra A30 hoặc GPU tương đương (nếu có)
 Chỉ cần chạy `scripts/run_infer.py` trên 50 mẫu dev và ghi mean/p95/max thời gian mỗi mẫu. Kaggle p95 hiện khoảng 3 giây; vẫn chưa có số liệu trên phần cứng chấm (1×A30).
 
@@ -71,8 +79,8 @@ Gửi điểm (tổng, exec/ask/oos) và file đầu ra. Đây là mốc "chưa 
 Đã xong: khai thác lượt `history` (ý 1), cờ `HIST` và `SKIP_ASR` trong pipeline, bộ chia "app lạ" (A4), `scripts/compare_runs.py` (so từng cặp mẫu, có khoảng tin cậy; trên dev chỉ phát hiện được chênh lệch từ khoảng 6 điểm trở lên), sửa lỗi biến thể `ask`, tài liệu này.
 
 Tiếp theo, theo thứ tự:
-1. Đổi thực thể đồng bộ trong câu, tham số và kết quả (ý 2; rủi ro: đổi sót một chỗ sẽ tạo nhãn sai mà vẫn trông hợp lệ).
-2. Mẫu `ask` bằng cách xóa tham số khỏi câu, và mẫu `oos` thêm (ý 4).
+1. ~~Đổi thực thể đồng bộ~~ **bỏ**: phân tích lỗi giá trị trên dev cho thấy chủ yếu là số học thời gian ("trước mười lăm phút" từ giờ giao hàng, "thứ ba tuần sau" lệch một ngày) và chọn ID, không phải đổi tên người hay địa điểm.
+2. Mẫu `ask` bằng cách xóa tham số khỏi câu: cần xác định đúng đoạn bị xóa trong câu nói, nhãn sai nhưng trông hợp lệ nếu xác định sai; chưa làm.
 3. Dev theo từng bước (cần chạy model nên làm khi có GPU).
 4. Khung Docker v0 (chạy offline, đọc `/data`, ghi `result/submission.jsonl`), chờ B4(a) để chỉnh cho đúng.
 

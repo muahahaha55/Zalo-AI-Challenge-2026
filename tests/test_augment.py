@@ -122,3 +122,68 @@ def test_oos_samples_end_immediately_and_hide_all_gold_apps():
     rows, st = synthetic_samples([x], _plain_cat("abc"), {}, random.Random(0), 1, 0)
     assert st["oos"] == 1 and [m["role"] for m in rows[0]["messages"]] == ["system", "user", "assistant"]
     assert rows[0]["messages"][-1]["content"] == "END" and "a.t(" not in rows[0]["messages"][1]["content"]
+
+
+def _req(i, app, text, calls=None, hist=None):
+    x = item(i, hist or [])
+    x["audio_text"] = text
+    x["label"] = {"tool_calls": calls if calls is not None else [{"name": f"{app}.t", "arguments": {"id": i}}], "tool_results": [{"ok": True}]}
+    x["context"]["installed_apps"] = {a: {"tools": [f"{a}.t"]} for a in "abc"}
+    return x
+
+
+def test_retraction_replace_keeps_the_answer_of_A_and_drops_B():
+    from lifemate.augment import RETRACT_MARKERS, retraction_samples
+    a, b = _req("A", "a", "Mở cửa giúp tôi."), _req("B", "b", "Bật quạt lên nhé.")
+    rows, st = retraction_samples([a, b], _plain_cat("abc"), random.Random(0), 2, 0)
+    assert st == {"replace": 2, "cancel": 0}
+    for r in rows:
+        own, other = r["id"].split("#")[0], ("B" if r["id"].startswith("A") else "A")
+        user = r["messages"][1]["content"]
+        text = user.split("[YÊU CẦU]\n")[1]
+        assert any(f", {m}, " in text for m in RETRACT_MARKERS)
+        assert text.startswith("Mở cửa giúp tôi" if other == "A" else "Bật quạt lên nhé")     # retracted request first
+        assert text.endswith("Mở cửa giúp tôi." if own == "A" else "Bật quạt lên nhé.")           # the request that counts last
+        answer = [m["content"] for m in r["messages"] if m["role"] == "assistant"]
+        assert any(f'"id":"{own}"' in x for x in answer) and not any(f'"id":"{other}"' in x for x in answer)
+
+
+def test_retraction_cancel_has_no_calls_and_skips_history_and_ask_samples():
+    from lifemate.augment import retraction_samples
+    with_hist = _req("H", "a", "Có lịch sử.", hist=turn(1, "u", []))
+    ask = _req("K", "b", "Hỏi lại.", calls=[{"name": "sys.ask_missing_info", "arguments": {"tool_name": "b.t", "params": ["x"]}}])
+    ok = _req("O", "c", "Tắt đèn đi.")
+    rows, st = retraction_samples([with_hist, ask, ok], _plain_cat("abc"), random.Random(1), 0, 5)
+    assert st["cancel"] == 1 and [r["id"].split("#")[0] for r in rows] == ["O"]       # only the plain exec sample qualifies
+    assert [m["role"] for m in rows[0]["messages"]] == ["system", "user", "assistant"] and rows[0]["messages"][-1]["content"] == "END"
+    assert "Tắt đèn đi" in rows[0]["messages"][1]["content"]
+
+
+def test_retraction_is_reproducible_and_needs_a_partner():
+    from lifemate.augment import retraction_samples
+    items = [_req(str(i), "abc"[i % 3], f"Yêu cầu số {i}.") for i in range(9)]
+    r1, _ = retraction_samples(items, _plain_cat("abc"), random.Random(5), 6, 3)
+    r2, _ = retraction_samples(items, _plain_cat("abc"), random.Random(5), 6, 3)
+    assert r1 == r2 and len(r1) == 9
+    solo, st = retraction_samples([items[0]], _plain_cat("abc"), random.Random(0), 3, 0)
+    assert solo == [] and st["replace"] == 0
+
+
+def test_is_simple_request_rejects_scope_ambiguous_text():
+    from lifemate.augment import is_simple_request
+    assert is_simple_request("Bật đèn phòng khách giúp tôi nhé.")
+    assert not is_simple_request("Bật đèn, rồi tắt quạt đi")                       # two clauses
+    assert not is_simple_request("Đừng gửi vội nha")                               # negation
+    assert not is_simple_request("Tắt đèn đi à thôi")                              # already retracts
+    assert not is_simple_request("từ " * 30)                                       # too long
+
+
+def test_retraction_oversample_repeats_real_samples_only():
+    from lifemate.augment import retraction_oversample
+    real = _req("R", "a", "Bật đèn lên, à mà thôi, khỏi đèn, mở rèm đi.")
+    plain = _req("P", "b", "Tắt quạt đi.")
+    asr = {"audio/R/R.wav": "bật đèn lên à mà thôi khỏi đèn mở rèm đi", "audio/P/P.wav": "tắt quạt đi"}
+    rows = retraction_oversample([real, plain], _plain_cat("abc"), asr, random.Random(0), 2)
+    assert sorted(r["id"] for r in rows) == ["R#rx0", "R#rx1"]
+    texts = {r["id"]: r["messages"][1]["content"].split("[YÊU CẦU]\n")[1] for r in rows}
+    assert texts["R#rx0"].startswith("Bật đèn lên") and texts["R#rx1"] == "bật đèn lên à mà thôi khỏi đèn mở rèm đi"

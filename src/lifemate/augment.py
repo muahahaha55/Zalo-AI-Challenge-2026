@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 
 from .prompt import build_messages
 
@@ -162,3 +163,88 @@ def synthetic_samples(train_items: list[dict], cat: dict, asr: dict, rng: random
             stats["variants"] += 1
     rng.shuffle(rows)
     return rows, stats
+
+
+# How speakers retract in the real data (98 train samples, 6.3%): a request, a marker, then either the request that
+# counts or "never mind". Markers below are taken from those samples.
+RETRACT_MARKERS = ["à thôi", "mà thôi", "à khoan", "ờ mà khoan", "à không", "thôi", "ờ thôi"]
+CANCEL_ENDINGS = ["khỏi", "thôi khỏi", "khỏi làm nữa", "không cần nữa", "thôi bỏ đi"]
+_TRAILING = " .,;!?…"
+# markers of a retraction / negation that make the scope of a composed 'never mind' ambiguous, plus the real-data pattern
+_AMBIGUOUS = re.compile(r"à khoan|à thôi|mà thôi|\bthôi\b|khỏi|à không|không phải|nhầm|\bkhoan\b|\bđừng\b", re.IGNORECASE)
+REAL_RETRACTION = re.compile(r"à khoan|à thôi|mà thôi|thôi khỏi|khỏi|không phải", re.IGNORECASE)
+MAX_RETRACTED_WORDS = 25
+
+
+def is_simple_request(text: str, max_words: int = MAX_RETRACTED_WORDS) -> bool:
+    """One short clause with no retraction/negation of its own: safe to use as the 'taken back' part of a composition,
+    because 'never mind' can only mean that whole request."""
+    t = text.strip().rstrip(_TRAILING)
+    return bool(t) and len(t.split()) <= max_words and "," not in t and not _AMBIGUOUS.search(t)
+
+
+def _retractable(it: dict, pool_apps: set | None = None) -> bool:
+    calls = it["label"]["tool_calls"]
+    ok = bool(calls) and not it["history"] and all(c["name"] != "sys.ask_missing_info" for c in calls)
+    return ok and (pool_apps is None or gold_apps(it) <= pool_apps)
+
+
+def retraction_samples(train_items: list[dict], cat: dict, rng: random.Random, n_replace: int, n_cancel: int):
+    """Compositions that teach 'ignore what the speaker took back'. TRAIN samples only. Text is clean (no audio exists
+    for a composed sentence), history-free samples only. Returns (rows, stats).
+
+    replace : '<request B>, <marker>, <request A>'  -> gold of A. B was actionable in A's context (its apps are installed
+              there) but is retracted, so none of B's calls may appear in the answer.
+    cancel  : '<request B>, <marker> <cancel>'       -> no tool call at all (END), the whole request was withdrawn.
+    Each composition stays on A's (or B's) own context, so ids, tool results and the answer remain consistent."""
+    base = [it for it in train_items if _retractable(it) and is_simple_request(it["audio_text"])]
+    rows: list[dict] = []
+    stats = {"replace": 0, "cancel": 0}
+
+    def clause(it: dict) -> str:
+        return it["audio_text"].strip().rstrip(_TRAILING)
+
+    def add(it: dict, text: str, label: dict, tag: str) -> None:
+        sample = {**it, "label": label}
+        rows.append({"id": f"{it['id']}#{tag}", "messages": build_messages(sample, cat, text, [])})
+
+    answerable = [it for it in train_items if it["label"]["tool_calls"] and not it["history"]     # A may also be an ask sample
+                  and not _AMBIGUOUS.search(it["audio_text"])]
+    rng.shuffle(answerable)
+    for a in answerable:
+        if stats["replace"] >= n_replace:
+            break
+        installed = set(a["context"]["installed_apps"])
+        partners = [b for b in base if b["id"] != a["id"] and gold_apps(b) <= installed]
+        if not partners:
+            continue
+        b = rng.choice(partners)
+        text = f"{clause(b)}, {rng.choice(RETRACT_MARKERS)}, {a['audio_text'].strip()}"
+        add(a, text, a["label"], f"retr{stats['replace']}")
+        stats["replace"] += 1
+    shuffled = list(base)
+    rng.shuffle(shuffled)
+    for b in shuffled:
+        if stats["cancel"] >= n_cancel:
+            break
+        text = f"{clause(b)}, {rng.choice(RETRACT_MARKERS)} {rng.choice(CANCEL_ENDINGS)}"
+        add(b, text, {"tool_calls": [], "tool_results": []}, f"cancel{stats['cancel']}")
+        stats["cancel"] += 1
+    rng.shuffle(rows)
+    return rows, stats
+
+
+def retraction_oversample(train_items: list[dict], cat: dict, asr: dict, rng: random.Random, copies: int):
+    """Real self-correction samples (6% of train), repeated `copies` times. Labels are the real ones, so nothing can be mislabelled;
+    copy 0 keeps the clean text and later copies use the ASR text when available, so repeats are not identical."""
+    rows = []
+    for it in train_items:
+        if not REAL_RETRACTION.search(it["audio_text"]):
+            continue
+        for c in range(copies):
+            use_asr = bool(asr) and c % 2 == 1
+            pick = _text_picker(asr, use_asr)
+            history = [pick(h) for h in it["history"] if h["role"] == "user"]
+            rows.append({"id": f"{it['id']}#rx{c}", "messages": build_messages(it, cat, pick(it), history)})
+    rng.shuffle(rows)
+    return rows
