@@ -17,3 +17,5 @@ id_ed25519*
 *.gguf
 *.ckpt
 wandb/
+kaggle_upload/
+checkpoints/

@@ -1,0 +1,17 @@
+# Installed OFFLINE in a Kaggle notebook from the wheelhouse dataset (see docs/KAGGLE.md).
+# torch/numpy come preinstalled with the Kaggle image and are NOT in the wheelhouse.
+# transformers >= 4.56 (scripts pass dtype=). Tested on 4.57 and 5.20 (Kaggle image ships 5.x; 5.x removed warmup_ratio and group_by_length).
+transformers>=4.56,<6
+accelerate
+peft
+datasets
+soundfile
+librosa
+jiwer
+jsonschema
+sentencepiece
+protobuf
+pyyaml
+tqdm
+pandas
+pytest

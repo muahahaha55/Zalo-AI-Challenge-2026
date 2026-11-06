@@ -8,6 +8,7 @@ Only train audio is used (never public_test / private_test).
 """
 import argparse
 import json
+import os
 import random
 import re
 import unicodedata
@@ -22,6 +23,12 @@ from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments, WhisperForCon
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
 OUT = ROOT / "data" / "processed"
+
+
+def warmup_kwargs(ratio):
+    """transformers 5 removed warmup_ratio (a float warmup_steps < 1 means a ratio there); 4.x only knows warmup_ratio."""
+    import dataclasses
+    return {"warmup_ratio": ratio} if "warmup_ratio" in {f.name for f in dataclasses.fields(Seq2SeqTrainingArguments)} else {"warmup_steps": ratio}
 
 
 def norm(s):
@@ -58,6 +65,7 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--bs", type=int, default=8)
     ap.add_argument("--accum", type=int, default=2)
+    ap.add_argument("--save-steps", type=int, default=0, help="0 = save each epoch")
     ap.add_argument("--rank", type=int, default=32)
     ap.add_argument("--max-steps", type=int, default=-1)
     ap.add_argument("--seed", type=int, default=42)
@@ -79,23 +87,26 @@ def main():
     model.config.forced_decoder_ids = None
     model.generation_config.language, model.generation_config.task = "vi", "transcribe"
     model.config.use_cache = False
-    model.gradient_checkpointing_enable()
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     model.enable_input_require_grads()
     model = get_peft_model(model, LoraConfig(r=a.rank, lora_alpha=2 * a.rank, lora_dropout=0.05,
                                              target_modules=["q_proj", "k_proj", "v_proj", "out_proj", "fc1", "fc2"]))
     model.print_trainable_parameters()
     args = Seq2SeqTrainingArguments(
         output_dir=a.out, per_device_train_batch_size=a.bs, gradient_accumulation_steps=a.accum, num_train_epochs=a.epochs,
-        max_steps=a.max_steps, learning_rate=a.lr, lr_scheduler_type="cosine", warmup_ratio=0.05, logging_steps=10,
-        save_strategy="epoch", save_total_limit=2, bf16=True, seed=a.seed, data_seed=a.seed, report_to="none",
+        max_steps=a.max_steps, learning_rate=a.lr, lr_scheduler_type="cosine", **warmup_kwargs(0.05), logging_steps=10,
+        save_strategy="steps" if a.save_steps else "epoch", save_steps=a.save_steps or 500, save_total_limit=2,
+        ddp_find_unused_parameters=False, bf16=True, seed=a.seed, data_seed=a.seed, report_to="none",
         remove_unused_columns=False, dataloader_num_workers=0, label_names=["labels"])
     start = model.config.decoder_start_token_id
-    Seq2SeqTrainer(model=model, args=args, train_dataset=rows, data_collator=Collate(proc, start)).train()
-    merged = model.merge_and_unload()
-    merged.config.use_cache = True
-    merged.save_pretrained(Path(a.out) / "merged")
-    proc.save_pretrained(Path(a.out) / "merged")
-    print("saved", Path(a.out) / "merged")
+    trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=rows, data_collator=Collate(proc, start))
+    trainer.train()
+    if trainer.is_world_process_zero():       # only one rank merges and writes (DDP runs this script once per GPU)
+        merged = model.merge_and_unload()
+        merged.config.use_cache = True
+        merged.save_pretrained(Path(a.out) / "merged")
+        proc.save_pretrained(Path(a.out) / "merged")
+        print("saved", Path(a.out) / "merged")
 
 
 if __name__ == "__main__":

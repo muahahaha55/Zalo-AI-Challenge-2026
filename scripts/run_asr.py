@@ -30,6 +30,8 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--ids", help="file with sample ids; only transcribe audio of those samples")
     ap.add_argument("--bs", type=int, default=8)
+    ap.add_argument("--shard", help="K/N: transcribe every N-th wav starting at K; writes asr_<tag>_<split>.partK.jsonl "
+                                    "(merge with merge_shards.py --key path)")
     a = ap.parse_args()
     torch.manual_seed(0)
     np.random.seed(0)
@@ -42,7 +44,10 @@ def main():
     if a.limit:
         paths = paths[: a.limit]
     OUT.mkdir(parents=True, exist_ok=True)
-    out_path = OUT / f"asr_{a.tag}_{a.split}.jsonl"
+    if a.shard:
+        k, n = map(int, a.shard.split("/"))
+        paths = paths[k::n]
+    out_path = OUT / f"asr_{a.tag}_{a.split}{f'.part{k}' if a.shard else ''}.jsonl"
     done = set()
     if out_path.exists():
         done = {json.loads(l)["path"] for l in open(out_path, encoding="utf-8")}

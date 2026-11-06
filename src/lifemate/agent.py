@@ -9,6 +9,7 @@ import json
 from typing import Callable
 
 from .prompt import END, build_messages, call_text, dumps, result_message
+from .rules import fix_args
 
 MAX_STEPS = 8
 
@@ -32,7 +33,7 @@ def parse_call(text: str):
 
 
 def run_sample(item: dict, env, catalog: dict, transcript: str, history_texts: list[str],
-               generate: Callable[[list[dict]], str], max_steps: int = MAX_STEPS, retries: int = 1):
+               generate: Callable[[list[dict]], str], max_steps: int = MAX_STEPS, retries: int = 1, use_rules: bool = True):
     msgs = build_messages(item, catalog, transcript, history_texts, with_target=False)
     seen, errors = set(), 0
     for _ in range(max_steps):
@@ -47,6 +48,8 @@ def run_sample(item: dict, env, catalog: dict, transcript: str, history_texts: l
             msgs += [{"role": "assistant", "content": out}, {"role": "user", "content": "LỖI: đầu ra không phải JSON tool call hợp lệ."}]
             continue
         name, args = parsed
+        if use_rules:                                  # Step 7: re-derive times / spoken phone numbers deterministically
+            args, _ = fix_args(name, args, transcript, item["context"]["current_time"])
         key = dumps({"name": name, "arguments": args})
         v = env.validate(name, args)
         if not v.get("ok", False):

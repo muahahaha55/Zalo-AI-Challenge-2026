@@ -6,8 +6,36 @@ import re
 import unicodedata
 from pathlib import Path
 
-import jiwer
 import sys
+
+try:
+    import jiwer
+except ImportError:          # e.g. a Kaggle notebook without Internet: same corpus-level WER/CER in pure Python
+    class jiwer:             # noqa: N801  (mimics the two functions used below)
+        @staticmethod
+        def _edits(r, h):
+            prev = list(range(len(h) + 1))
+            for i, x in enumerate(r, 1):
+                cur = [i]
+                for j, y in enumerate(h, 1):
+                    cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (x != y)))
+                prev = cur
+            return prev[-1]
+
+        @classmethod
+        def _rate(cls, refs, hyps, split):
+            if isinstance(refs, str):
+                refs, hyps = [refs], [hyps]
+            edits = sum(cls._edits(split(r), split(h)) for r, h in zip(refs, hyps))
+            return edits / max(1, sum(len(split(r)) for r in refs))
+
+        @classmethod
+        def wer(cls, refs, hyps):
+            return cls._rate(refs, hyps, str.split)
+
+        @classmethod
+        def cer(cls, refs, hyps):
+            return cls._rate(refs, hyps, list)
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
