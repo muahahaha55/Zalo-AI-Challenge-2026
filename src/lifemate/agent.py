@@ -19,7 +19,10 @@ from .prompt import END, build_messages, call_text, dumps, result_message
 from .rules import fix_args
 
 MAX_STEPS = 8
-Generate = Callable[[list[dict]], str]
+MIN_STEP_TIME_S = 0.5     # never ask a backend for a zero or negative time cap
+# A backend is a callable messages -> str. A backend that sets `accepts_deadline = True` is also called with `max_time=<seconds>`
+# (the remaining time budget) and must stop generating by then.
+Generate = Callable[..., str]
 
 
 class StopReason(str, Enum):
@@ -94,7 +97,11 @@ class Agent:
                 break
             t0 = self._clock()
             try:
-                out = gen(msgs).strip()
+                if cfg.time_budget_s is not None and getattr(gen, "accepts_deadline", False):
+                    # hard cap for this single generation (a step cannot be interrupted from outside): what is left of the budget
+                    out = gen(msgs, max_time=max(cfg.time_budget_s - (t0 - start), MIN_STEP_TIME_S)).strip()
+                else:
+                    out = gen(msgs).strip()
             except Exception as exc:  # noqa: BLE001 - never lose the env: it already holds the calls made so far
                 reason, error = StopReason.BACKEND_ERROR, f"{type(exc).__name__}: {exc}"
                 break

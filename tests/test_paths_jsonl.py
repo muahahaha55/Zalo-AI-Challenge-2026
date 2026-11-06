@@ -21,3 +21,9 @@ def test_jsonl_round_trip_keeps_unicode_and_skips_blank_lines(tmp_path):
     assert "Phạm Hùng" in p.read_text(encoding="utf-8")              # ensure_ascii=False
     p.write_text(p.read_text(encoding="utf-8") + "\n\n", encoding="utf-8")
     assert jsonl.read_jsonl(p) == [{"a": "Phạm Hùng"}, {"b": [1, 2]}]
+
+
+def test_write_jsonl_uses_lf_on_every_platform(tmp_path):
+    p = tmp_path / "x.jsonl"
+    jsonl.write_jsonl(p, [{"a": 1}, {"a": 2}])
+    assert p.read_bytes() == b'{"a": 1}\n{"a": 2}\n'

@@ -77,12 +77,15 @@ class HFBackend:
     def param_count(self) -> int:
         return sum(p.numel() for p in self.model.parameters())
 
-    def __call__(self, messages: list[dict]) -> str:
+    accepts_deadline = True        # the agent passes the remaining time budget as max_time (seconds)
+
+    def __call__(self, messages: list[dict], max_time: float | None = None) -> str:
         ids = self.tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt",
                                            enable_thinking=False, return_dict=True).to("cuda")
+        extra = {} if max_time is None else {"max_time": max_time}
         with self._torch.no_grad():
             out = self.model.generate(**ids, max_new_tokens=self.max_new_tokens, do_sample=False,
-                                      temperature=None, top_p=None, top_k=None)
+                                      temperature=None, top_p=None, top_k=None, **extra)
         return self.tok.decode(out[0, ids["input_ids"].shape[1]:], skip_special_tokens=True)
 
 

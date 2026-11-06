@@ -46,7 +46,7 @@ def main():
         if (n - 1) % 20 == 0:
             print(f"{n}/{total}  avg {avg:.2f}s", flush=True)
 
-    with open(a.out, "w", encoding="utf-8") as fout:
+    with open(a.out, "w", encoding="utf-8", newline="\n") as fout:     # LF on every OS (the organisers' format is plain JSON Lines)
         for row in runner.run(items, progress):
             fout.write(json.dumps(row, ensure_ascii=False) + "\n")
     print("done", runner.stats.summary())

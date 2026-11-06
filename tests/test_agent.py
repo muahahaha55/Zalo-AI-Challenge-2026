@@ -123,3 +123,57 @@ def test_parse_call_accepts_fenced_json_and_rejects_garbage():
     assert parse_call("END") is None
     assert parse_call('{"arguments":{}}') is None
     assert parse_call('{"name":"a","arguments":[1]}') is None
+
+
+def test_backend_that_accepts_a_deadline_gets_the_remaining_budget():
+    now = [0.0]
+    seen = []
+
+    class Backend:
+        accepts_deadline = True
+        outputs = iter([READ, WRITE, "END"])
+
+        def __call__(self, messages, max_time=None):
+            seen.append(max_time)
+            now[0] += 3.0
+            return next(self.outputs)
+
+    agent = Agent(CAT, Backend(), AgentConfig(use_rules=False, time_budget_s=20.0), clock=lambda: now[0])
+    agent.run(ITEM, FakeEnv(), "x", [])
+    assert seen == [20.0, 17.0, 14.0]               # remaining budget before each step
+
+
+def test_deadline_is_not_passed_without_a_budget_or_to_plain_backends():
+    seen = []
+
+    class Backend:
+        accepts_deadline = True
+
+        def __call__(self, messages, max_time=None):
+            seen.append(max_time)
+            return "END"
+
+    Agent(CAT, Backend(), AgentConfig(use_rules=False)).run(ITEM, FakeEnv(), "x", [])          # no budget: nothing to cap
+    assert seen == [None]
+    def plain(messages):                                  # no accepts_deadline: a stray max_time would raise TypeError -> BACKEND_ERROR
+        return "END"
+
+    out = Agent(CAT, plain, AgentConfig(use_rules=False, time_budget_s=5.0)).run(ITEM, FakeEnv(), "x", [])
+    assert out.stop_reason is StopReason.END
+
+
+def test_remaining_budget_never_drops_below_the_minimum():
+    now = [0.0]
+    seen = []
+
+    class Backend:
+        accepts_deadline = True
+
+        def __call__(self, messages, max_time=None):
+            seen.append(max_time)
+            now[0] += 0.0
+            return READ if len(seen) == 1 else "END"
+
+    agent = Agent(CAT, Backend(), AgentConfig(use_rules=False, time_budget_s=0.2), clock=lambda: now[0])
+    agent.run(ITEM, FakeEnv(), "x", [])
+    assert seen[0] == 0.5
