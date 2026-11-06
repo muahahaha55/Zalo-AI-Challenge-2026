@@ -1,5 +1,5 @@
 """Build SFT data from train: data/processed/sft_{train,dev}.jsonl (+ dev_ids.txt) and verify round-trip.
-Usage: python -I -X utf8 scripts/build_sft.py [--tokenizer Qwen/Qwen3-4B] [--asr-tag phowl_ft] [--aug-oos 100 --aug-variants 1]
+Usage: python -I -X utf8 scripts/build_sft.py [--tokenizer Qwen/Qwen3-4B] [--asr-tag phowl_ft] [--aug-oos 100 --aug-variants 1] [--hist-max 700]
 Augmentation (train split only, never dev) is written to a SEPARATE file sft_train_aug.jsonl so the base files stay unchanged:
   --aug-oos N      N synthetic out-of-scope samples: a history-free exec sample whose gold apps are ALL removed from installed_apps,
                    target = END at once (the request can no longer be served by any installed app)
@@ -18,6 +18,7 @@ DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
 OUT = ROOT / "data" / "processed"
 sys.path.insert(0, str(ROOT / "src"))
 from lifemate.prompt import load_catalog, build_messages, END  # noqa: E402
+from lifemate.augment import history_samples  # noqa: E402
 
 
 def groups(items, thr=0.6):
@@ -100,6 +101,8 @@ def main():
     ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     ap.add_argument("--aug-oos", type=int, default=0)
     ap.add_argument("--aug-variants", type=int, default=0)
+    ap.add_argument("--hist-max", type=int, default=0,
+                    help="N: also write sft_train_hist.jsonl with up to N samples taken from the earlier turns of TRAIN samples' history")
     a = ap.parse_args()
     items = [json.loads(l) for l in open(DATA / "train.jsonl", encoding="utf-8")]
     cat = load_catalog(DATA / "train_tools_catalog.json")
@@ -146,6 +149,13 @@ def main():
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"augmentation -> sft_train_aug.jsonl: {len(rows)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
+    if a.hist_max:
+        train_only = [it for it, gi in zip(items, g) if gi not in dev_groups]
+        rows, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
+        with open(OUT / "sft_train_hist.jsonl", "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        print(f"history turns -> sft_train_hist.jsonl: {len(rows)} samples; candidates {st}")
     (OUT / "dev_ids.txt").write_text("\n".join(r["id"] for r in dv) + "\n")
     print(f"groups={len(set(g))} train={len(tr)} dev={len(dv)} (dev groups={len(dev_groups)})")
     if a.tokenizer:

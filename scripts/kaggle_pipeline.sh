@@ -8,7 +8,7 @@
 #   DRYRUN=1 ...  print the commands only;  FORCE=1 ... redo a stage that is already marked done
 # Each stage writes outputs/logs/<stage>.log and outputs/.done_<stage>; re-running a finished stage is a no-op.
 # Env: QWEN, PHO (model dirs, set by kaggle_env.sh); NGPU (default: all visible); MAXLEN (default 5120: the longest sample is 4.4K tokens)
-#      RUN (adapter name, default q4b_lora; use e.g. q4b_aug for a new run), AUG=1 (train also on sft_train_aug.jsonl from stage aug_data),
+#      RUN (adapter name, default q4b_lora; use e.g. q4b_aug for a new run), SKIP_ASR=1 (train only the LLM, keep checkpoints/phowl_ft), AUG=1 / HIST=1 (train also on sft_train_aug.jsonl / sft_train_hist.jsonl from stage aug_data),
 #      SAVE_LIMIT (checkpoints kept, default 2), EPOCHS_SFT / EPOCHS_ASR (default 3); MAX_HOURS (SFT wall-clock budget, default 10.5); TAG (eval_dev: phowl or phowl_ft)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -62,9 +62,16 @@ stage_body() {
       if [ "${AUG:-0}" = 1 ]; then
         if [ -s "$D/sft_train_aug.jsonl" ]; then data="$data $D/sft_train_aug.jsonl"; else echo "AUG=1 but $D/sft_train_aug.jsonl is missing: run stage aug_data first"; exit 1; fi
       fi
+      if [ "${HIST:-0}" = 1 ]; then
+        if [ -s "$D/sft_train_hist.jsonl" ]; then data="$data $D/sft_train_hist.jsonl"; else echo "HIST=1 but $D/sft_train_hist.jsonl is missing: run stage aug_data first"; exit 1; fi
+      fi
       local asr_cmd="CUDA_VISIBLE_DEVICES=$asr_gpu $PY scripts/train_asr.py --model $PHO --out $CK/phowl_ft --epochs $EPOCHS_ASR --save-steps 100 $SMOKE_ASR"
       local sft_cmd="CUDA_VISIBLE_DEVICES=$sft_gpus torchrun --nproc_per_node=$nsft scripts/train_sft.py --model $QWEN --data $data --out $CK/$RUN --save-limit ${SAVE_LIMIT:-2} --epochs $EPOCHS_SFT --max-len $MAXLEN --global-batch 16 --save-steps 100 --max-hours ${MAX_HOURS:-10.5} --resume $SMOKE_SFT"
-      if [ "$NGPU" -ge 2 ]; then
+      if [ "${SKIP_ASR:-0}" = 1 ]; then      # LLM only: never touches checkpoints/phowl_ft; all GPUs go to the SFT
+        nsft=$NGPU; sft_gpus=$(seq -s, 0 $((NGPU - 1)))
+        sft_cmd="CUDA_VISIBLE_DEVICES=$sft_gpus torchrun --nproc_per_node=$nsft ${sft_cmd#*torchrun --nproc_per_node=* }"
+        run "$sft_cmd"
+      elif [ "$NGPU" -ge 2 ]; then
         run "$asr_cmd > outputs/logs/train_asr.log 2>&1 &"
         run "$sft_cmd"
         run "wait"
@@ -84,7 +91,7 @@ stage_body() {
       run "$PY scripts/build_sft.py --asr-tag phowl_ft" ;;
     aug_data)        # train-only augmentation: synthetic out-of-scope samples + shuffled/dropped-app variants (see build_sft.py)
       if [ "${SMOKE:-0}" = 1 ]; then echo "skipped in SMOKE (would overwrite real data)"; return 0; fi
-      run "$PY scripts/build_sft.py --asr-tag phowl_ft --aug-oos ${AUG_OOS:-100} --aug-variants ${AUG_VARIANTS:-1}" ;;
+      run "$PY scripts/build_sft.py --asr-tag phowl_ft --aug-oos ${AUG_OOS:-100} --aug-variants ${AUG_VARIANTS:-1} --hist-max ${HIST_MAX:-700}" ;;
     eval_dev)        # HANDOFF 2.3: dev score with the LoRA adapter; TAG=phowl (default) or phowl_ft
       local tag=${TAG:-phowl} txt
       txt="asr:$tag"; if [ "${SMOKE:-0}" = 1 ]; then txt=clean; fi   # smoke ASR files only cover a few wavs
