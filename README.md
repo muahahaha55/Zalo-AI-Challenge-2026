@@ -24,6 +24,8 @@ Ràng buộc: offline, tất định (greedy, seed cố định), tổng < 6B th
 | SFT + ASR fine-tune (`phowl_ft`) — **cấu hình nộp hiện tại** | **56,33** |
 | SFT + transcript sạch (trần của LLM hiện tại) | 65,69 |
 
+**Leaderboard public (lần 1, 2026-11-06): 48,56**, cùng cấu hình `phowl_ft` ở trên (dev tương ứng 56,33, chênh −7,8; dev chỉ 155 mẫu). Phân tích hành vi bài nộp ở `docs/EXPERIMENTS.md`.
+
 Chi tiết, nguyên nhân mất điểm và nhật ký: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md). Kết luận chính: **điểm nghẽn là SFT của LLM** (quá khớp, loại ask/oos, app lạ), không phải ASR hay luật giờ.
 
 ## Việc còn lại (nhận việc bằng cách ghi tên vào cột "Ai")
@@ -31,9 +33,9 @@ Số Step theo [docs/PLAN.md](docs/PLAN.md). Không dùng audio hay nhãn public
 
 | # | Việc | Step | Ghi chú | Ai |
 |---|---|---|---|---|
-| 1 | Nộp public lần đầu, ghi điểm vào `EXPERIMENTS.md` | 4 | Cần người phụ trách đồng ý (RULES 5.1). Xem mục "Nộp public" bên dưới | |
+| 1 | ~~Nộp public lần đầu~~ **XONG**: 48,56 (06/11), đã ghi vào `EXPERIMENTS.md` | 4 | Lần nộp sau chỉ khi dev tăng rõ; cần người phụ trách đồng ý (RULES 5.1). Xem mục "Nộp public" bên dưới | |
 | 2 | Huấn luyện lại SFT với augmentation (oos tổng hợp + xáo thứ tự app), lưu checkpoint theo epoch, so với `q4b_lora` | 5 | `docs/KAGGLE.md` mục 4b. Đã có code, chưa chạy | |
-| 3 | Dữ liệu tổng hợp cho 11 app mới của public (chỉ dùng **schema** catalog) | 6 | 65% mẫu public có app lạ. Cần LLM lớn ở giai đoạn phát triển (không dùng lúc inference) | |
+| 3 | Dữ liệu tổng hợp cho 11 app mới của public (chỉ dùng **schema** catalog) | 6 | 65% mẫu public có app lạ. **Không gửi dữ liệu/catalog cho API LLM bên thứ ba** (đã chốt): sinh bằng mẫu câu, luật và model chạy local; mọi mẫu phải qua `validate` và thực thi được | |
 | 4 | Dev "app lạ": giấu vài app khỏi SFT để đo khái quát hóa thật | 5/6 | Hiện dev chỉ có app đã thấy nên điểm dev lạc quan | |
 | 5 | Cổng ask/oos bảo thủ, constrained decoding | 8 | Gọi thừa 1 tool khi oos là 0 điểm | |
 | 6 | Đo thời gian p95 trên A30 và đếm tham số cuối | 11 | Kaggle chỉ để tham khảo | |
