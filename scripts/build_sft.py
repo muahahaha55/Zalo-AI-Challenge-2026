@@ -18,7 +18,7 @@ DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
 OUT = ROOT / "data" / "processed"
 sys.path.insert(0, str(ROOT / "src"))
 from lifemate.prompt import load_catalog, build_messages, END  # noqa: E402
-from lifemate.augment import history_samples  # noqa: E402
+from lifemate.augment import gold_apps, history_samples, split_holdout  # noqa: E402
 
 
 def groups(items, thr=0.6):
@@ -40,8 +40,6 @@ def groups(items, thr=0.6):
     return [find(i) for i in range(len(items))]
 
 
-def gold_apps(it):
-    return {c["name"].split(".")[0] for c in it["label"]["tool_calls"]} - {"sys"}
 
 
 def with_apps(it, apps):
@@ -101,11 +99,23 @@ def main():
     ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     ap.add_argument("--aug-oos", type=int, default=0)
     ap.add_argument("--aug-variants", type=int, default=0)
+    ap.add_argument("--hold-apps", default="",
+                    help="comma-separated apps to hide from training ('unseen apps' experiment): samples whose gold uses them become "
+                         "holdout/eval_ids.txt, the others lose those apps from their prompts. Everything is written to data/processed/holdout/")
     ap.add_argument("--hist-max", type=int, default=0,
                     help="N: also write sft_train_hist.jsonl with up to N samples taken from the earlier turns of TRAIN samples' history")
     a = ap.parse_args()
     items = [json.loads(l) for l in open(DATA / "train.jsonl", encoding="utf-8")]
     cat = load_catalog(DATA / "train_tools_catalog.json")
+    out_dir = OUT
+    if a.hold_apps:
+        hold = {x.strip() for x in a.hold_apps.split(",") if x.strip()}
+        items, eval_ids = split_holdout(items, hold)
+        out_dir = OUT / "holdout"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "eval_ids.txt").write_text("\n".join(eval_ids) + "\n")
+        (out_dir / "hold_apps.txt").write_text(",".join(sorted(hold)) + "\n")
+        print(f"HOLDOUT {sorted(hold)}: {len(eval_ids)} eval samples held out of training, {len(items)} samples left for training/dev")
     g = groups(items)
     ids = sorted(set(g))
     random.Random(a.seed).shuffle(ids)
@@ -139,24 +149,24 @@ def main():
     for name, rows in (("sft_train", tr), ("sft_dev", dv), ("sft_train_asr", tra), ("sft_dev_asr", dva)):
         if not rows:
             continue
-        with open(OUT / f"{name}.jsonl", "w", encoding="utf-8") as f:
+        with open(out_dir / f"{name}.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
     if a.aug_oos or a.aug_variants:
         train_items = [(it, gi) for it, gi in zip(items, g) if gi not in dev_groups]
         rows, st = augment(train_items, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
-        with open(OUT / "sft_train_aug.jsonl", "w", encoding="utf-8") as f:
+        with open(out_dir / "sft_train_aug.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"augmentation -> sft_train_aug.jsonl: {len(rows)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
     if a.hist_max:
         train_only = [it for it, gi in zip(items, g) if gi not in dev_groups]
         rows, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
-        with open(OUT / "sft_train_hist.jsonl", "w", encoding="utf-8") as f:
+        with open(out_dir / "sft_train_hist.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"history turns -> sft_train_hist.jsonl: {len(rows)} samples; candidates {st}")
-    (OUT / "dev_ids.txt").write_text("\n".join(r["id"] for r in dv) + "\n")
+    (out_dir / "dev_ids.txt").write_text("\n".join(r["id"] for r in dv) + "\n")
     print(f"groups={len(set(g))} train={len(tr)} dev={len(dv)} (dev groups={len(dev_groups)})")
     if a.tokenizer:
         from transformers import AutoTokenizer

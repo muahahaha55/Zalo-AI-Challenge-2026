@@ -6,6 +6,7 @@ unused by the main samples. Only TRAIN-split samples may be passed in (never dev
 """
 from __future__ import annotations
 
+import json
 import random
 
 from .prompt import build_messages
@@ -63,3 +64,37 @@ def history_samples(train_items: list[dict], cat: dict, asr: dict, rng: random.R
     stats["taken"] = take
     stats["selected"] = len(rows)
     return rows, stats
+
+
+def gold_apps(item: dict) -> set:
+    """Apps the gold answer depends on. sys.ask_missing_info names the tool it asks about, and that app counts too:
+    it must stay installed (and is 'used' by the sample) or the ask would point at a tool that does not exist."""
+    apps = set()
+    for c in item["label"]["tool_calls"]:
+        name = c["name"]
+        if name == "sys.ask_missing_info":
+            name = str((c.get("arguments") or {}).get("tool_name", ""))
+        apps.add(name.split(".")[0])
+    return apps - {"sys", ""}
+
+
+def history_apps(item: dict) -> set:
+    return {c["name"].split(".")[0] for h in item["history"] if h["role"] == "assistant"
+            for c in (h.get("tool_calls") or [])} - {"sys"}
+
+
+def split_holdout(items: list[dict], hold_apps: set):
+    """'Unseen apps' experiment. Returns (train_items, eval_ids).
+    eval_ids: every sample whose gold calls use a held app -> evaluated by a model that never saw those tools.
+    train_items: the remaining samples with the held apps REMOVED from installed_apps, and dropped entirely if their
+    history already called a held app (so no trace of a held tool is left anywhere in the training prompts)."""
+    eval_ids = [it["id"] for it in items if gold_apps(it) & hold_apps]
+    ev = set(eval_ids)
+    train = []
+    for it in items:
+        if it["id"] in ev or history_apps(it) & hold_apps:
+            continue
+        new = json.loads(json.dumps(it))   # plain-data copy of a sample (no env involved)
+        new["context"]["installed_apps"] = {a: v for a, v in it["context"]["installed_apps"].items() if a not in hold_apps}
+        train.append(new)
+    return train, eval_ids

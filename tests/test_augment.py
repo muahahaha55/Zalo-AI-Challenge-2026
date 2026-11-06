@@ -67,3 +67,30 @@ def test_unknown_tool_is_skipped():
     bad = turn(1, "u", [{"name": "zzz.nope", "arguments": {}}])
     rows, _ = history_samples([item("s", bad)], CAT, {}, random.Random(0), 5)
     assert rows == []
+
+
+def test_split_holdout_hides_apps_everywhere():
+    from lifemate.augment import split_holdout
+    def it(i, gold_app, hist_app=None, apps=("a", "h", "k")):
+        calls = [{"name": f"{gold_app}.t", "arguments": {}}] if gold_app else []
+        hist = turn(1, "u", [{"name": f"{hist_app}.t", "arguments": {}}]) if hist_app else []
+        x = item(i, hist); x["label"] = {"tool_calls": calls, "tool_results": []}
+        x["context"]["installed_apps"] = {a: {"tools": [f"{a}.t"]} for a in apps}
+        return x
+    items = [it("s1", "a"), it("s2", "h"), it("s3", "a", hist_app="h"), it("s4", None), it("s5", "k", hist_app="a")]
+    train, ev = split_holdout(items, {"h"})
+    assert ev == ["s2"]                                       # gold uses a held app
+    assert [t["id"] for t in train] == ["s1", "s4", "s5"]       # s3 dropped: its history called a held app
+    assert all("h" not in t["context"]["installed_apps"] for t in train)
+    assert "h" in items[0]["context"]["installed_apps"]         # inputs are not mutated
+
+
+def test_gold_apps_counts_the_app_an_ask_is_about():
+    from lifemate.augment import gold_apps
+    x = item("s", [])
+    x["label"] = {"tool_calls": [{"name": "contacts.search", "arguments": {}},
+                                 {"name": "sys.ask_missing_info", "arguments": {"tool_name": "phone.call", "params": ["contact_id"]}}],
+                  "tool_results": []}
+    assert gold_apps(x) == {"contacts", "phone"}
+    x["label"]["tool_calls"] = [{"name": "sys.ask_missing_info", "arguments": {"tool_name": "flights.search", "params": ["date"]}}]
+    assert gold_apps(x) == {"flights"}

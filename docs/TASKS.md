@@ -41,6 +41,21 @@ Gửi cả hai con số. Nếu WER trên train **thấp hơn nhiều** dev (ví 
 ### A3. Kiểm tra A30 hoặc GPU tương đương (nếu có)
 Chỉ cần chạy `scripts/run_infer.py` trên 50 mẫu dev và ghi mean/p95/max thời gian mỗi mẫu. Kaggle p95 hiện khoảng 3 giây; vẫn chưa có số liệu trên phần cứng chấm (1×A30).
 
+### A4. Thử "app lạ" (sau A1; đo khái quát hóa thật, ~2 giờ vì ít mẫu hơn)
+Hiện dev chỉ có app đã thấy, nên điểm dev lạc quan so với public (65% mẫu public có app lạ). Bộ chia này giấu 6 app (`flights, bike_rental, package_tracking, shopping_list, podcast_radio, loyalty`) khỏi mọi chỗ trong dữ liệu train, kể cả khỏi danh sách app trong prompt, rồi đo trên các mẫu dùng chúng.
+```bash
+python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_rental,package_tracking,shopping_list,podcast_radio,loyalty --hist-max 300
+#   ghi vào data/processed/holdout/ (không đụng file chính). Kỳ vọng: ~1180 mẫu train, 174 mẫu đánh giá
+python -I -X utf8 scripts/train_sft.py --model $QWEN --data data/processed/holdout/sft_train.jsonl data/processed/holdout/sft_train_asr.jsonl \
+     --out checkpoints/q4b_holdout --epochs 3 --max-len 5120 --global-batch 16 --save-limit 2
+bash scripts/infer_multi_gpu.sh train outputs/unseen_q4b_holdout.jsonl --ids data/processed/holdout/eval_ids.txt \
+     --backend hf --model $QWEN --adapter checkpoints/q4b_holdout --text clean
+python -I -X utf8 scripts/eval.py --sub outputs/unseen_q4b_holdout.jsonl --ids data/processed/holdout/eval_ids.txt
+```
+Gửi điểm (tổng, exec/ask/oos) và file đầu ra. Đây là mốc "chưa thấy app" để so các ý sau (che tên, ghép app). Mỗi lần so thêm một ý thì train lại với cùng bộ chia này.
+
+**Lưu ý quan trọng sau khi kéo bản mới:** bản cũ của bước sinh biến thể (`--aug-variants`) có lỗi: với mẫu `ask`, nó coi app mà câu hỏi nhắc tới là "không liên quan" và có thể xóa app đó khỏi danh sách đã cài (161/217 mẫu `ask` bị ảnh hưởng, khoảng 30% biến thể của chúng bị hỏng). Đã sửa. **File `sft_train_aug.jsonl` đã dựng trước đó trên Kaggle cần dựng lại** (`bash scripts/kaggle_pipeline.sh aug_data` với `FORCE=1`) trước khi dùng `AUG=1`.
+
 ## B. Việc làm tay, không cần GPU (ai cũng làm được)
 
 | # | Việc | Làm thế nào | Gửi lại |
@@ -53,14 +68,13 @@ Chỉ cần chạy `scripts/run_infer.py` trên 50 mẫu dev và ghi mean/p95/ma
 | B6 | Kiểm tra mẫu | chạy thử A1 bước 1 và gửi dòng `wc -l` | 3 con số |
 
 ## C. Việc của tôi (máy local, không cần GPU)
-Đã xong: khai thác lượt `history` (ý 1), cờ `HIST` và `SKIP_ASR` trong pipeline, tài liệu này.
+Đã xong: khai thác lượt `history` (ý 1), cờ `HIST` và `SKIP_ASR` trong pipeline, bộ chia "app lạ" (A4), `scripts/compare_runs.py` (so từng cặp mẫu, có khoảng tin cậy; trên dev chỉ phát hiện được chênh lệch từ khoảng 6 điểm trở lên), sửa lỗi biến thể `ask`, tài liệu này.
 
 Tiếp theo, theo thứ tự:
 1. Đổi thực thể đồng bộ trong câu, tham số và kết quả (ý 2; rủi ro: đổi sót một chỗ sẽ tạo nhãn sai mà vẫn trông hợp lệ).
 2. Mẫu `ask` bằng cách xóa tham số khỏi câu, và mẫu `oos` thêm (ý 4).
-3. Dev theo từng bước và dev app lạ (giấu vài app khỏi train, đo trên mẫu dùng chúng).
-4. Script so sánh từng cặp mẫu giữa hai bản chạy dev.
-5. Khung Docker v0 (chạy offline, đọc `/data`, ghi `result/submission.jsonl`), chờ B4(a) để chỉnh cho đúng.
+3. Dev theo từng bước (cần chạy model nên làm khi có GPU).
+4. Khung Docker v0 (chạy offline, đọc `/data`, ghi `result/submission.jsonl`), chờ B4(a) để chỉnh cho đúng.
 
 ## D. Điều kiện chốt
 - **Đến 13/11:** chốt cấu hình, ngừng thêm tính năng. Sau mốc này chỉ sửa lỗi và đóng gói.
