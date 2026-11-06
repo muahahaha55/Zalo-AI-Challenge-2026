@@ -3,10 +3,9 @@ Usage: python -I -X utf8 scripts/asr_wer.py --tag phowl [--dev-only]"""
 import argparse
 import json
 import re
+import sys
 import unicodedata
 from pathlib import Path
-
-import sys
 
 try:
     import jiwer
@@ -40,6 +39,7 @@ except ImportError:          # e.g. a Kaggle notebook without Internet: same cor
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lifemate.normalize import words_to_digits  # noqa: E402
+
 DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
 OUT = ROOT / "data" / "processed"
 

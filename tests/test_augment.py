@@ -1,6 +1,7 @@
 import random
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lifemate.augment import history_samples
 from lifemate.prompt import END
@@ -74,7 +75,8 @@ def test_split_holdout_hides_apps_everywhere():
     def it(i, gold_app, hist_app=None, apps=("a", "h", "k")):
         calls = [{"name": f"{gold_app}.t", "arguments": {}}] if gold_app else []
         hist = turn(1, "u", [{"name": f"{hist_app}.t", "arguments": {}}]) if hist_app else []
-        x = item(i, hist); x["label"] = {"tool_calls": calls, "tool_results": []}
+        x = item(i, hist)
+        x["label"] = {"tool_calls": calls, "tool_results": []}
         x["context"]["installed_apps"] = {a: {"tools": [f"{a}.t"]} for a in apps}
         return x
     items = [it("s1", "a"), it("s2", "h"), it("s3", "a", hist_app="h"), it("s4", None), it("s5", "k", hist_app="a")]
@@ -94,3 +96,29 @@ def test_gold_apps_counts_the_app_an_ask_is_about():
     assert gold_apps(x) == {"contacts", "phone"}
     x["label"]["tool_calls"] = [{"name": "sys.ask_missing_info", "arguments": {"tool_name": "flights.search", "params": ["date"]}}]
     assert gold_apps(x) == {"flights"}
+
+
+def _plain_cat(apps):
+    cat = {f"{a}.t": {"name": f"{a}.t", "kind": "read", "description": "", "parameters": {"type": "object", "properties": {}}} for a in apps}
+    cat["sys.ask_missing_info"] = CAT["sys.ask_missing_info"]
+    return cat
+
+
+def test_variants_never_drop_the_app_an_ask_is_about():
+    from lifemate.augment import synthetic_samples
+    x = item("s", [])
+    x["label"] = {"tool_calls": [{"name": "sys.ask_missing_info", "arguments": {"tool_name": "b.t", "params": ["x"]}}], "tool_results": []}
+    x["context"]["installed_apps"] = {a: {"tools": [f"{a}.t"]} for a in "abcdefgh"}
+    rows, _ = synthetic_samples([x], _plain_cat("abcdefgh"), {}, random.Random(3), 0, 60)
+    assert len(rows) == 60
+    assert all("b.t(" in r["messages"][1]["content"] for r in rows)     # the tool the ask refers to is always still listed
+
+
+def test_oos_samples_end_immediately_and_hide_all_gold_apps():
+    from lifemate.augment import synthetic_samples
+    x = item("s", [])
+    x["label"] = {"tool_calls": [{"name": "a.t", "arguments": {}}], "tool_results": [{"ok": True}]}
+    x["context"]["installed_apps"] = {a: {"tools": [f"{a}.t"]} for a in "abc"}
+    rows, st = synthetic_samples([x], _plain_cat("abc"), {}, random.Random(0), 1, 0)
+    assert st["oos"] == 1 and [m["role"] for m in rows[0]["messages"]] == ["system", "user", "assistant"]
+    assert rows[0]["messages"][-1]["content"] == "END" and "a.t(" not in rows[0]["messages"][1]["content"]

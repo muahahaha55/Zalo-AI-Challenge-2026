@@ -57,7 +57,7 @@ def compact_tool(t: dict) -> str:
 
 def schema_block(installed_apps: dict, catalog: dict) -> str:
     lines = []
-    for app, info in installed_apps.items():
+    for info in installed_apps.values():
         for tn in info["tools"]:
             lines.append(compact_tool(catalog[tn]))
     lines.append(compact_tool(catalog["sys.ask_missing_info"]))
@@ -77,7 +77,7 @@ def history_block(history: list, user_texts: list[str]) -> str:
             ui += 1
         else:
             if h.get("tool_calls"):
-                for c, r in zip(h["tool_calls"], h.get("tool_results", [])):
+                for c, r in zip(h["tool_calls"], h.get("tool_results", []), strict=False):
                     out.append("  gọi " + dumps(c) + " -> " + dumps(r))
             out.append("Trợ lý: " + h.get("text", ""))
     return "\n".join(out) if out else "(không có)"

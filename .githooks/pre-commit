@@ -3,3 +3,4 @@
 PY=".venv/Scripts/python"; [ -x "$PY" ] || PY="python3"; [ -x "$PY" ] || PY="python"
 "$PY" -I -X utf8 scripts/check_compliance.py --staged || exit 1
 "$PY" -m pytest -q tests || exit 1
+if "$PY" -m ruff --version >/dev/null 2>&1; then "$PY" -m ruff check src scripts tests || exit 1; else echo "ruff not installed: lint skipped (pip install -r requirements-dev.txt)"; fi

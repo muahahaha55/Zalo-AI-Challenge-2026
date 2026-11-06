@@ -6,8 +6,6 @@ Handles: 'một trăm hai mươi ba triệu' -> 123 triệu, 'hai triệu tám' 
 """
 from __future__ import annotations
 
-import re
-
 DIGITS = {"không": 0, "một": 1, "mốt": 1, "hai": 2, "ba": 3, "bốn": 4, "tư": 4, "năm": 5, "lăm": 5,
           "sáu": 6, "bảy": 7, "bẩy": 7, "tám": 8, "chín": 9}
 UNITS = {"nghìn": 10**3, "ngàn": 10**3, "triệu": 10**6, "tỷ": 10**9, "tỉ": 10**9}
@@ -56,7 +54,8 @@ def words_to_digits(text: str) -> str:
     out, i = [], 0
     while i < len(toks):
         if toks[i].lower() not in NUMWORDS:
-            out.append(toks[i]); i += 1
+            out.append(toks[i])
+            i += 1
             continue
         j = i
         while j < len(toks) and toks[j].lower() in NUMWORDS:

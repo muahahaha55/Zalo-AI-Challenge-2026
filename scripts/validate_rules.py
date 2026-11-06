@@ -7,7 +7,6 @@ B) false fires: start from the GOLD value (a perfect model); the rule must chang
 """
 import argparse
 import json
-import re
 import sys
 from collections import Counter
 from datetime import datetime, timedelta
@@ -16,7 +15,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lifemate.rules import HHMM, ISO_D, ISO_DT, extract_when, fix_args, spoken_numbers  # noqa: E402
-
 
 SLIPS = [timedelta(hours=1), timedelta(hours=-1), timedelta(days=1), timedelta(days=-1), timedelta(hours=12), timedelta(days=1, hours=1)]
 

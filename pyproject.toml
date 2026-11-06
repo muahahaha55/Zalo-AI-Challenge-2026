@@ -1,0 +1,35 @@
+[project]
+name = "lifemate"
+version = "0.1.0"
+description = "LifeMate (Zalo AI Challenge 2026): Vietnamese voice request -> ASR -> tool-calling agent"
+requires-python = ">=3.10"
+# Runtime and training dependencies are pinned per environment in requirements*.txt (torch is installed separately).
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+extend-exclude = ["data", "notebooks", "checkpoints", "outputs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
+ignore = [
+    "E501",    # long lines are checked by line-length for the formatter only; prompts and docs have long strings
+    "SIM108",  # ternary instead of if/else is not always clearer
+    "SIM115",  # open() outside a with-block is used in a few one-liners reading a whole file
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lifemate"]
+
+[tool.ruff.lint.per-file-ignores]
+# scripts/ are command-line entry points: they must patch sys.path before importing lifemate (E402), and several one-off
+# analysis scripts use terse one-liners. Style-only rules are relaxed there; library code (src/) and tests are fully checked.
+"scripts/*" = ["E402", "E701", "E702", "E731", "E741", "B007", "B023", "B905", "UP031"]

@@ -20,6 +20,13 @@ def _turns(item: dict):
             yield k, h[k], h[k + 1]
 
 
+def _text_picker(asr: dict, use_asr: bool):
+    """Function giving the text of a user turn: its ASR transcript (noisy, as at inference) or the clean gold text."""
+    if use_asr:
+        return lambda turn: asr[turn["audio"]]
+    return lambda turn: turn["audio_text"]
+
+
 QUOTAS = {"multi": 0.40, "none": 0.20, "one_write": 0.25, "one_read": 0.15}
 
 
@@ -52,10 +59,10 @@ def history_samples(train_items: list[dict], cat: dict, asr: dict, rng: random.R
         spare -= max(0, extra)
     chosen = [x for key in quotas for x in cand[key][: take[key]]]
     rows = []
-    for it, k, u, a, calls, results in chosen:
+    for it, k, u, _assistant, calls, results in chosen:
         use_asr = bool(asr) and rng.random() < asr_share
         hist = it["history"][:k]                          # earlier turns only
-        pick = lambda turn: asr[turn["audio"]] if use_asr else turn["audio_text"]
+        pick = _text_picker(asr, use_asr)
         htexts = [pick(t) for t in hist if t["role"] == "user"]
         sample = {**it, "history": hist, "label": {"tool_calls": calls, "tool_results": results}}
         rows.append({"id": f"{it['id']}#h{k // 2}", "messages": build_messages(sample, cat, pick(u), htexts)})
@@ -98,3 +105,60 @@ def split_holdout(items: list[dict], hold_apps: set):
         new["context"]["installed_apps"] = {a: v for a, v in it["context"]["installed_apps"].items() if a not in hold_apps}
         train.append(new)
     return train, eval_ids
+
+
+def with_apps(item: dict, apps: dict) -> dict:
+    """Copy of a sample whose context lists exactly `apps` (an ordered dict app -> {'tools': [...]})."""
+    new = json.loads(json.dumps(item))                    # plain-data copy of a sample (no env involved)
+    new["context"]["installed_apps"] = apps
+    return new
+
+
+def synthetic_samples(train_items: list[dict], cat: dict, asr: dict, rng: random.Random, n_oos: int, n_variants: int):
+    """Train-split augmentation (never call it with dev samples). Returns (rows, stats).
+
+    oos      : a history-free exec sample whose gold apps are ALL removed from installed_apps; target = END at once
+               (no installed app can serve the request any more).
+    variants : per sample, shuffled app/tool order with random irrelevant apps dropped. Gold apps are always kept, and for
+               `ask` samples that includes the app the question is about (see gold_apps), same targets as the original.
+    The order of rng calls is part of the contract: it makes the output reproducible for a given seed."""
+    rows: list[dict] = []
+    stats = {"oos": 0, "variants": 0}
+
+    def add(it: dict, tag: str, calls: list | None = None) -> None:
+        use_asr = bool(asr) and rng.random() < 0.5
+        pick = _text_picker(asr, use_asr)
+        sample = it if calls is None else {**it, "label": {**it["label"], "tool_calls": calls, "tool_results": []}}
+        history = [pick(h) for h in it["history"] if h["role"] == "user"]
+        rows.append({"id": f"{it['id']}#{tag}", "messages": build_messages(sample, cat, pick(it), history)})
+
+    execs = [it for it in train_items if it["label"]["tool_calls"] and not it["history"]
+             and all(c["name"] != "sys.ask_missing_info" for c in it["label"]["tool_calls"])]
+    rng.shuffle(execs)
+    for it in execs:
+        if stats["oos"] >= n_oos:
+            break
+        used = gold_apps(it)
+        left = {a: v for a, v in it["context"]["installed_apps"].items() if a not in used}
+        if not used or not left:
+            continue
+        keys = list(left)
+        rng.shuffle(keys)
+        add(with_apps(it, {a: left[a] for a in keys}), "oos", calls=[])
+        stats["oos"] += 1
+    for it in train_items:
+        for v in range(n_variants):
+            used = gold_apps(it)
+            others = [a for a in it["context"]["installed_apps"] if a not in used]
+            kept = [a for a in others if rng.random() < 0.7]
+            keys = [a for a in it["context"]["installed_apps"] if a in used or a in kept]
+            rng.shuffle(keys)
+            apps = {}
+            for a in keys:
+                tools = list(it["context"]["installed_apps"][a]["tools"])
+                rng.shuffle(tools)
+                apps[a] = {**it["context"]["installed_apps"][a], "tools": tools}
+            add(with_apps(it, apps), f"aug{v}")
+            stats["variants"] += 1
+    rng.shuffle(rows)
+    return rows, stats

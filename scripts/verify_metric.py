@@ -1,11 +1,14 @@
 """Independent checks that our scorer/hash pipeline agrees with what the organisers ship. Run: python -I -X utf8 scripts/verify_metric.py"""
-import json, re, sys, importlib
+import importlib
+import json
+import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "raw" / "train+public_test"
 sys.path.insert(0, str(ROOT / "src"))
-from lifemate.metric import load_fuzzy_params, count_matches, token_f1  # noqa: E402
+from lifemate.metric import load_fuzzy_params, token_f1  # noqa: E402
 
 
 def env_for(split):
@@ -53,6 +56,7 @@ print("D. fuzzy token-definition sensitivity (whitespace vs regex word tokens)")
 fz = load_fuzzy_params(DATA / "train" / "train_tools_catalog.json")
 import unicodedata
 from collections import Counter
+
 
 def f1_regex(a, b):
     t = lambda s: re.findall(r"\w+", unicodedata.normalize("NFC", s).lower())

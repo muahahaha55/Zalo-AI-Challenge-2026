@@ -8,7 +8,6 @@ Only train audio is used (never public_test / private_test).
 """
 import argparse
 import json
-import os
 import random
 import re
 import unicodedata

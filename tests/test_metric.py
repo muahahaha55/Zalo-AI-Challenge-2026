@@ -1,7 +1,8 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from lifemate.metric import score_sample, token_f1, count_matches
+from lifemate.metric import count_matches, score_sample
 
 FZ = {"notes.create": {"title"}}
 g = [{"name": "a.read", "arguments": {}}, {"name": "a.write", "arguments": {"id": "x", "n": 5}}]

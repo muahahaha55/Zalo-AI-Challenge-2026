@@ -44,13 +44,14 @@ Số Step theo [docs/PLAN.md](docs/PLAN.md). Không dùng audio hay nhãn public
 
 ## Cấu trúc repo
 ```
-src/lifemate/    metric.py (bộ chấm), prompt.py (dựng prompt, dùng chung SFT và inference),
-                 agent.py (vòng lặp từng bước), normalize.py (số đọc → chữ số), rules.py (hậu xử lý giờ/số điện thoại)
-scripts/         run_asr.py, asr_wer.py, build_sft.py, train_asr.py, train_sft.py, run_infer.py, eval.py, verify_metric.py,
+src/lifemate/    agent.py (lớp Agent: vòng lặp từng bước, giới hạn thời gian, lý do dừng), pipeline.py (SplitRunner, Transcripts, HFBackend),
+                 prompt.py (dựng prompt, dùng chung SFT và inference), metric.py (bộ chấm), augment.py (mẫu lịch sử, biến thể, giấu app),
+                 grouping.py (nhóm câu gần giống), rules.py (hậu xử lý giờ/số điện thoại), normalize.py (số đọc → chữ số), paths.py, jsonl.py
+scripts/         run_asr.py, asr_wer.py, build_sft.py, train_asr.py, train_sft.py, run_infer.py, eval.py, verify_metric.py, compare_runs.py, verify_submission.py,
                  analyze_dev.py, replay_rules.py, validate_rules.py, check_compliance.py, check_env.py
                  kaggle_*.sh|py, infer_multi_gpu.sh, merge_shards.py, prepare_models.py   (chạy trên Kaggle)
                  setup_cloud.sh                                                            (chạy trên vast.ai)
-tests/           test_metric.py, test_normalize.py, test_rules.py
+tests/           test_agent.py, test_augment.py, test_grouping.py, test_metric.py, test_normalize.py, test_paths_jsonl.py, test_pipeline.py, test_rules.py
 notebooks/       submit-public.ipynb (chạy public_test → submission.jsonl), test-dev-set.ipynb (đo dev vòng 2),
                  testmodel-zaloai.ipynb (bản cũ, kiểm tra dataset Kaggle). Đã xóa output; sửa đường dẫn input theo tài khoản Kaggle của bạn
 docs/            xem bảng dưới
@@ -75,7 +76,7 @@ git config core.hooksPath .githooks                       # bật hook kiểm tr
 # giải nén train+public_test.zip (lấy từ cổng cuộc thi) vào data/raw/ → data/raw/train+public_test/{train,public_test}
 .venv/Scripts/python -I -X utf8 scripts/check_env.py       # mọi dòng phải "ok"
 .venv/Scripts/python -I -X utf8 scripts/verify_metric.py   # bộ chấm: gold = 100, nộp rỗng ≈ 7
-.venv/Scripts/python -m pytest tests -q                    # 17 test
+.venv/Scripts/python -m pytest tests -q                    # 44 test
 .venv/Scripts/python scripts/check_compliance.py           # kiểm tra tuân thủ
 ```
 Máy local (RTX 4050 6 GB) chỉ để viết code, chấm điểm, test. **Huấn luyện và đo thời gian chạy trên Kaggle hoặc vast.ai.**

@@ -1,95 +1,50 @@
 """Build SFT data from train: data/processed/sft_{train,dev}.jsonl (+ dev_ids.txt) and verify round-trip.
 Usage: python -I -X utf8 scripts/build_sft.py [--tokenizer Qwen/Qwen3-4B] [--asr-tag phowl_ft] [--aug-oos 100 --aug-variants 1] [--hist-max 700]
-Augmentation (train split only, never dev) is written to a SEPARATE file sft_train_aug.jsonl so the base files stay unchanged:
-  --aug-oos N      N synthetic out-of-scope samples: a history-free exec sample whose gold apps are ALL removed from installed_apps,
-                   target = END at once (the request can no longer be served by any installed app)
-  --aug-variants K K variants per train sample with shuffled app/tool order and random irrelevant apps dropped (gold apps kept),
-                   same targets: anti-memorisation of tool names/order for unseen apps"""
+Extra data (train split only, never dev) goes to SEPARATE files so the base files stay unchanged:
+  --aug-oos N / --aug-variants K   sft_train_aug.jsonl  (see lifemate.augment.synthetic_samples)
+  --hist-max N                     sft_train_hist.jsonl (earlier turns of train samples' history, see lifemate.augment.history_samples)
+  --hold-apps a,b,c                'unseen apps' experiment: samples whose gold uses these apps become holdout/eval_ids.txt, the others
+                                   lose the apps from their prompts; everything is written to data/processed/holdout/"""
 import argparse
-import json
 import random
-import copy
-import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "raw" / "train+public_test" / "train"
-OUT = ROOT / "data" / "processed"
 sys.path.insert(0, str(ROOT / "src"))
-from lifemate.prompt import load_catalog, build_messages, END  # noqa: E402
-from lifemate.augment import gold_apps, history_samples, split_holdout  # noqa: E402
+from lifemate.augment import history_samples, split_holdout, synthetic_samples  # noqa: E402
+from lifemate.grouping import near_duplicate_groups  # noqa: E402
+from lifemate.jsonl import read_jsonl, write_jsonl  # noqa: E402
+from lifemate.paths import processed_dir, split_dir  # noqa: E402
+from lifemate.prompt import END, build_messages, load_catalog  # noqa: E402
+
+DEV_SHARE = 0.1
 
 
-def groups(items, thr=0.6):
-    """Union-find over near-duplicate transcripts (Jaccard of word sets >= thr) so dev has no template leakage."""
-    toks = [set(re.findall(r"\w+", it["audio_text"].lower())) for it in items]
-    par = list(range(len(items)))
-
-    def find(x):
-        while par[x] != x:
-            par[x] = par[par[x]]
-            x = par[x]
-        return x
-
-    for i in range(len(items)):
-        for j in range(i + 1, len(items)):
-            u = len(toks[i] | toks[j])
-            if u and len(toks[i] & toks[j]) / u >= thr:
-                par[find(i)] = find(j)
-    return [find(i) for i in range(len(items))]
-
-
-
-
-def with_apps(it, apps):
-    """Copy of a sample whose context lists exactly `apps` (an ordered dict app -> {'tools': [...]})."""
-    new = copy.deepcopy(it)
-    new["context"]["installed_apps"] = apps
-    return new
-
-
-def augment(train_items, cat, asr, rng, n_oos, n_variants):
-    """Returns (rows, stats). train_items: list of (item, gi) that belong to the TRAIN split."""
-    rows, stats = [], {"oos": 0, "variants": 0}
-
-    def row(it, tag, calls=None):
-        use_asr = bool(asr) and rng.random() < 0.5
-        text = asr[it["audio"]] if use_asr else it["audio_text"]
-        ht = [asr[h["audio"]] if use_asr else h["audio_text"] for h in it["history"] if h["role"] == "user"]
-        sample = it if calls is None else {**it, "label": {**it["label"], "tool_calls": calls, "tool_results": []}}
-        rows.append({"id": f"{it['id']}#{tag}", "messages": build_messages(sample, cat, text, ht)})
-
-    execs = [it for it, _ in train_items if it["label"]["tool_calls"] and not it["history"]
-             and all(c["name"] != "sys.ask_missing_info" for c in it["label"]["tool_calls"])]
-    rng.shuffle(execs)
-    for it in execs:
-        if stats["oos"] >= n_oos:
+def choose_dev_groups(groups: list[int], seed: int) -> set[int]:
+    """Whole groups (shuffled with `seed`) until ~DEV_SHARE of the samples: near-duplicates never straddle train and dev.
+    NOTE: the shuffle depends on the numeric group labels, so changing how groups are numbered changes the dev set."""
+    sizes = Counter(groups)
+    order = sorted(sizes)
+    random.Random(seed).shuffle(order)
+    chosen: set[int] = set()
+    covered = 0
+    for gid in order:
+        if covered >= DEV_SHARE * len(groups):
             break
-        ga = gold_apps(it)
-        left = {a: v for a, v in it["context"]["installed_apps"].items() if a not in ga}
-        if not ga or not left:
-            continue
-        keys = list(left)
-        rng.shuffle(keys)
-        row(with_apps(it, {a: left[a] for a in keys}), "oos", calls=[])
-        stats["oos"] += 1
-    for it, _ in train_items:
-        for v in range(n_variants):
-            ga = gold_apps(it)
-            others = [a for a in it["context"]["installed_apps"] if a not in ga]
-            kept = [a for a in others if rng.random() < 0.7]
-            keys = [a for a in it["context"]["installed_apps"] if a in ga or a in kept]
-            rng.shuffle(keys)
-            apps = {}
-            for a in keys:
-                tools = list(it["context"]["installed_apps"][a]["tools"])
-                rng.shuffle(tools)
-                apps[a] = {**it["context"]["installed_apps"][a], "tools": tools}
-            row(with_apps(it, apps), f"aug{v}")
-            stats["variants"] += 1
-    rng.shuffle(rows)
-    return rows, stats
+        chosen.add(gid)
+        covered += sizes[gid]
+    return chosen
+
+
+def check_round_trip(item: dict, msgs: list[dict]) -> None:
+    """The assistant turns must decode back to the gold calls, and END must appear exactly when the gold does not end in ask."""
+    import json
+    decoded = [json.loads(m["content"]) for m in msgs if m["role"] == "assistant" and m["content"] != END]
+    calls = item["label"]["tool_calls"]
+    assert decoded == [{"name": c["name"], "arguments": c["arguments"]} for c in calls], item["id"]
+    assert (msgs[-1]["content"] == END) == (not calls or calls[-1]["name"] != "sys.ask_missing_info"), item["id"]
 
 
 def main():
@@ -99,83 +54,63 @@ def main():
     ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     ap.add_argument("--aug-oos", type=int, default=0)
     ap.add_argument("--aug-variants", type=int, default=0)
-    ap.add_argument("--hold-apps", default="",
-                    help="comma-separated apps to hide from training ('unseen apps' experiment): samples whose gold uses them become "
-                         "holdout/eval_ids.txt, the others lose those apps from their prompts. Everything is written to data/processed/holdout/")
-    ap.add_argument("--hist-max", type=int, default=0,
-                    help="N: also write sft_train_hist.jsonl with up to N samples taken from the earlier turns of TRAIN samples' history")
+    ap.add_argument("--hold-apps", default="", help="comma-separated apps to hide from training ('unseen apps' experiment)")
+    ap.add_argument("--hist-max", type=int, default=0, help="N: also write sft_train_hist.jsonl with up to N samples from train histories")
     a = ap.parse_args()
-    items = [json.loads(l) for l in open(DATA / "train.jsonl", encoding="utf-8")]
-    cat = load_catalog(DATA / "train_tools_catalog.json")
-    out_dir = OUT
+
+    train_dir, out = split_dir("train"), processed_dir()
+    items = read_jsonl(train_dir / "train.jsonl")
+    cat = load_catalog(train_dir / "train_tools_catalog.json")
     if a.hold_apps:
         hold = {x.strip() for x in a.hold_apps.split(",") if x.strip()}
         items, eval_ids = split_holdout(items, hold)
-        out_dir = OUT / "holdout"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / "eval_ids.txt").write_text("\n".join(eval_ids) + "\n")
-        (out_dir / "hold_apps.txt").write_text(",".join(sorted(hold)) + "\n")
+        out = out / "holdout"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "eval_ids.txt").write_text("\n".join(eval_ids) + "\n")
+        (out / "hold_apps.txt").write_text(",".join(sorted(hold)) + "\n")
         print(f"HOLDOUT {sorted(hold)}: {len(eval_ids)} eval samples held out of training, {len(items)} samples left for training/dev")
-    g = groups(items)
-    ids = sorted(set(g))
-    random.Random(a.seed).shuffle(ids)
-    dev_groups, n = set(), 0
-    for gid in ids:  # fill dev with whole groups until ~10% of samples
-        if n >= 0.1 * len(items):
-            break
-        dev_groups.add(gid)
-        n += g.count(gid)
-    OUT.mkdir(parents=True, exist_ok=True)
+    groups = near_duplicate_groups([it["audio_text"] for it in items])
+    dev_groups = choose_dev_groups(groups, a.seed)
+    out.mkdir(parents=True, exist_ok=True)
     asr = {}
     if a.asr_tag:
-        for l in open(OUT / f"asr_{a.asr_tag}_train.jsonl", encoding="utf-8"):
-            d = json.loads(l)
-            asr[d["path"]] = d["text"]
-    tr, dv, tra, dva = [], [], [], []
-    for it, gi in zip(items, g):
-        htexts = [h["audio_text"] for h in it["history"] if h["role"] == "user"]
-        msgs = build_messages(it, cat, it["audio_text"], htexts)
-        # round trip: assistant turns must decode back to the gold calls
-        dec = [json.loads(m["content"]) for m in msgs if m["role"] == "assistant" and m["content"] != END]
-        gold = [{"name": c["name"], "arguments": c["arguments"]} for c in it["label"]["tool_calls"]]
-        assert dec == gold, it["id"]
-        calls = it["label"]["tool_calls"]
-        assert (msgs[-1]["content"] == END) == (not calls or calls[-1]["name"] != "sys.ask_missing_info"), it["id"]
-        (dv if gi in dev_groups else tr).append({"id": it["id"], "messages": msgs})
+        asr = {d["path"]: d["text"] for d in read_jsonl(processed_dir() / f"asr_{a.asr_tag}_train.jsonl")}
+
+    rows: dict[str, list[dict]] = {"sft_train": [], "sft_dev": [], "sft_train_asr": [], "sft_dev_asr": []}
+    for it, gid in zip(items, groups):
+        side = "dev" if gid in dev_groups else "train"
+        history = [h["audio_text"] for h in it["history"] if h["role"] == "user"]
+        msgs = build_messages(it, cat, it["audio_text"], history)
+        check_round_trip(it, msgs)
+        rows[f"sft_{side}"].append({"id": it["id"], "messages": msgs})
         if asr:   # same targets, but the request and history turns are the ASR transcripts (noisy, as at inference)
-            at = asr[it["audio"]]
-            ah = [asr[h["audio"]] for h in it["history"] if h["role"] == "user"]
-            (dva if gi in dev_groups else tra).append({"id": it["id"], "messages": build_messages(it, cat, at, ah)})
-    for name, rows in (("sft_train", tr), ("sft_dev", dv), ("sft_train_asr", tra), ("sft_dev_asr", dva)):
-        if not rows:
-            continue
-        with open(out_dir / f"{name}.jsonl", "w", encoding="utf-8") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            noisy = [asr[h["audio"]] for h in it["history"] if h["role"] == "user"]
+            rows[f"sft_{side}_asr"].append({"id": it["id"], "messages": build_messages(it, cat, asr[it["audio"]], noisy)})
+    for name, data in rows.items():
+        if data:
+            write_jsonl(out / f"{name}.jsonl", data)
+
+    train_only = [it for it, gid in zip(items, groups) if gid not in dev_groups]
     if a.aug_oos or a.aug_variants:
-        train_items = [(it, gi) for it, gi in zip(items, g) if gi not in dev_groups]
-        rows, st = augment(train_items, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
-        with open(out_dir / "sft_train_aug.jsonl", "w", encoding="utf-8") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        print(f"augmentation -> sft_train_aug.jsonl: {len(rows)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
+        aug, st = synthetic_samples(train_only, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
+        write_jsonl(out / "sft_train_aug.jsonl", aug)
+        print(f"augmentation -> sft_train_aug.jsonl: {len(aug)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
     if a.hist_max:
-        train_only = [it for it, gi in zip(items, g) if gi not in dev_groups]
-        rows, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
-        with open(out_dir / "sft_train_hist.jsonl", "w", encoding="utf-8") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        print(f"history turns -> sft_train_hist.jsonl: {len(rows)} samples; candidates {st}")
-    (out_dir / "dev_ids.txt").write_text("\n".join(r["id"] for r in dv) + "\n")
-    print(f"groups={len(set(g))} train={len(tr)} dev={len(dv)} (dev groups={len(dev_groups)})")
+        hist, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
+        write_jsonl(out / "sft_train_hist.jsonl", hist)
+        print(f"history turns -> sft_train_hist.jsonl: {len(hist)} samples; candidates {st}")
+    (out / "dev_ids.txt").write_text("\n".join(r["id"] for r in rows["sft_dev"]) + "\n")
+    print(f"groups={len(set(groups))} train={len(rows['sft_train'])} dev={len(rows['sft_dev'])} (dev groups={len(dev_groups)})")
+
     if a.tokenizer:
         from transformers import AutoTokenizer
         tok = AutoTokenizer.from_pretrained(a.tokenizer)
-        L = sorted(len(tok.apply_chat_template(r["messages"], tokenize=True)) for r in tr + dv)
-        S = sorted(len(tok(r["messages"][1]["content"])["input_ids"]) for r in tr + dv)
-        q = lambda v, p: v[int(p * (len(v) - 1))]
-        print("full-sample tokens  mean=%.0f p50=%d p95=%d max=%d" % (sum(L) / len(L), q(L, .5), q(L, .95), L[-1]))
-        print("first user msg tok  mean=%.0f p50=%d p95=%d max=%d" % (sum(S) / len(S), q(S, .5), q(S, .95), S[-1]))
+        both = rows["sft_train"] + rows["sft_dev"]
+        full = sorted(len(tok.apply_chat_template(r["messages"], tokenize=True)) for r in both)
+        first = sorted(len(tok(r["messages"][1]["content"])["input_ids"]) for r in both)
+        q = lambda v, p: v[int(p * (len(v) - 1))]  # noqa: E731
+        print("full-sample tokens  mean=%.0f p50=%d p95=%d max=%d" % (sum(full) / len(full), q(full, .5), q(full, .95), full[-1]))
+        print("first user msg tok  mean=%.0f p50=%d p95=%d max=%d" % (sum(first) / len(first), q(first, .5), q(first, .95), first[-1]))
 
 
 if __name__ == "__main__":

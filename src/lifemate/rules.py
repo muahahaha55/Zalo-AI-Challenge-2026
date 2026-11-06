@@ -78,7 +78,9 @@ def _days(t: str, today: date, clock_spans):
     out = set()
     if re.search(r"\b(hôm nay|bữa nay|(?:sáng|trưa|chiều|tối|đêm) nay)\b", t):
         out.add(today)
-    near_clock = lambda i: any(abs(i - s) <= 18 or abs(i - e) <= 18 for s, e in clock_spans)
+    def near_clock(i: int) -> bool:
+        return any(abs(i - s) <= 18 or abs(i - e) <= 18 for s, e in clock_spans)
+
     for m in re.finditer(r"\bmai\b", t):          # 'mai' is also a first name and ASR output is lower-case: require time context
         ctx = t[max(0, m.start() - 6):m.start()]
         if re.search(r"(ngày|sáng|trưa|chiều|tối|đêm)\s*$", ctx) or near_clock(m.start()):

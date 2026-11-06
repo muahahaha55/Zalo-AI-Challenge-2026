@@ -2,7 +2,9 @@
    python -I -X utf8 scripts/eval.py --sub outputs/sub.jsonl [--ids dev_ids.txt]
    python -I -X utf8 scripts/eval.py --selftest          # gold -> 100.0, empty submission -> oos rate
 Gold hashes are produced by replaying the gold calls on the official ToolEnv (cached in data/processed/)."""
-import argparse, json, sys
+import argparse
+import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -10,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "raw" / "train+public_test"
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(DATA / "train"))
-from zaic_tools import ToolEnv                      # noqa: E402
+from zaic_tools import ToolEnv  # noqa: E402
+
 from lifemate.metric import load_fuzzy_params, score_sample  # noqa: E402
 
 CACHE = ROOT / "data" / "processed" / "gold_hash_train.json"
