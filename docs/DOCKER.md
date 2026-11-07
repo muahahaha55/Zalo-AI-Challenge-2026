@@ -1,6 +1,6 @@
 # Đóng gói Docker (bản nháp, chưa xác nhận với ban tổ chức)
 
-Trạng thái 2026-11-07. **Chưa có hướng dẫn đóng gói của ban tổ chức** (đã gửi email hỏi). Mọi thứ dưới đây dựa trên đề bài: BTC mount thư mục private_test (cấu trúc như public_test) vào `/data`, chạy script suy luận, lấy kết quả ở `result/submission.jsonl`, container chạy offline. Khi có tài liệu chính thức, đối chiếu và sửa.
+Trạng thái 2026-11-07 (cuối ngày). **Chưa có hướng dẫn đóng gói của ban tổ chức** (đã gửi email hỏi). Mọi thứ dưới đây dựa trên đề bài: BTC mount thư mục private_test (cấu trúc như public_test) vào `/data`, chạy script suy luận, lấy kết quả ở `result/submission.jsonl`, container chạy offline. Khi có tài liệu chính thức, đối chiếu và sửa.
 
 ## Đã kiểm chứng và chưa kiểm chứng
 
@@ -8,8 +8,9 @@ Trạng thái 2026-11-07. **Chưa có hướng dẫn đóng gói của ban tổ 
 |---|---|
 | Lõi chạy trong container (`src/lifemate/container.py`, `scripts/run_container.py`) | **Đã chạy thật bằng Python** trên máy này với `public_test`: cả hai bố cục `/data`, kết quả hợp lệ 634/634 hash, ghi vào `result/submission.jsonl` từ một thư mục làm việc khác, chạy tiếp sau lỗi, chặn mạng ở mức socket |
 | ASR sống + LLM với mạng bị chặn | **Đã chạy** với model nhỏ (PhoWhisper-small và Qwen3-0.6B), 3 mẫu: 0 lần cố kết nối mạng |
-| `docker build` / `docker run` | **Chưa chạy**: Docker Desktop không chạy trên máy phát triển nên chưa có image nào được dựng |
-| Ảnh GPU (`docker/Dockerfile`) | **Chưa dựng**, chưa chạy trên GPU nào; phiên bản thư viện chưa ghim |
+| Image `Dockerfile.lite` | **Đã dựng và chạy thật (07/11)** trên Docker Desktop (Linux/amd64, 178 MB): `--network none`, `public_test` mount **chỉ đọc**; bố cục phẳng và lồng cho file **trùng từng byte**; hai lần chạy trùng từng byte; 634/634 hash khớp khi phát lại bằng `zaic_tools` trên máy Windows (hash giống nhau giữa Linux và Windows); `--split` bị thiếu thì báo lỗi rõ; `/data` rỗng thoát mã 1 và không ghi file |
+| Ảnh GPU (`docker/Dockerfile`) | **Đã dựng và chạy thật (07/11) với model nhỏ** (Qwen3-0.6B, PhoWhisper-small, không adapter): `docker build` thành công (13,4 GB), `--gpus all` thấy RTX 4050, chạy `--network none` với dữ liệu chỉ đọc, nhận dạng giọng nói sống + LLM trên GPU, 3 mẫu hợp lệ, trung bình 3,79 giây/mẫu. **Chưa chạy với Qwen3-4B, PhoWhisper-large, adapter thật**; chưa đo trên A30 |
+| Phiên bản thư viện trong image | **Chưa ghim, và đã lệch**: bản dựng kéo `transformers 5.22.2`, trong khi adapter được train với 5.20.2 (torch 2.6.0+cu124, peft 0.21.2). Phải ghim theo môi trường đã train trước khi dựng bản cuối |
 | Bố cục `/data` thật của BTC | **Chưa biết**, nên mã nhận cả hai kiểu |
 | Thời gian trên A30, chạy lặp giống từng byte trên GPU | **Chưa đo** |
 
@@ -35,7 +36,7 @@ python -I -X utf8 scripts/verify_submission.py --split public_test --sub result/
 Chạy hai lần và so sánh hai file bằng `cmp` để kiểm tra tái lập.
 
 ### Ảnh đầy đủ
-1. Chuẩn bị thư mục `models/` ngoài git (đã nằm trong `.gitignore`): `models/llm` (Qwen3-4B cơ sở, safetensors + tokenizer), `models/adapter` (adapter LoRA), `models/asr` (PhoWhisper đã gộp).
+1. Chuẩn bị thư mục `models/` ngoài git (kích thước image: bản thử với model nhỏ là 13,4 GB; với Qwen3-4B và PhoWhisper-large sẽ khoảng 11 GB trọng số cộng khoảng 6 GB thư viện, nên cần tính chỗ chứa và đường tải lên) (đã nằm trong `.gitignore`): `models/llm` (Qwen3-4B cơ sở, safetensors + tokenizer), `models/adapter` (adapter LoRA), `models/asr` (PhoWhisper đã gộp).
 2. Ghim phiên bản trong `requirements-inference.txt` theo môi trường đã train (`pip freeze` trên Kaggle).
 3. `docker build -f docker/Dockerfile -t lifemate .`
 4. `docker run --rm --gpus all --network none -v "<split>:/data" -v "$PWD/result:/app/result" lifemate`
