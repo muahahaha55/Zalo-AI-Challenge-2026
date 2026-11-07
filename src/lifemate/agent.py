@@ -81,8 +81,11 @@ class Agent:
         self.config = config or AgentConfig()
         self._clock = clock
 
-    def run(self, item: dict, env, transcript: str, history_texts: list[str], generate: Generate | None = None) -> Outcome:
+    def run(self, item: dict, env, transcript: str, history_texts: list[str], generate: Generate | None = None,
+            time_budget_s: float | None = None) -> Outcome:
+        """`time_budget_s` overrides the configured budget for this sample (e.g. what is left after speech recognition)."""
         cfg, gen = self.config, generate or self.generate
+        budget = cfg.time_budget_s if time_budget_s is None else time_budget_s
         msgs = build_messages(item, self.catalog, transcript, history_texts, with_target=False)
         start = self._clock()
         seen: set[str] = set()
@@ -92,14 +95,14 @@ class Agent:
         error: str | None = None
 
         for _ in range(cfg.max_steps):
-            if cfg.time_budget_s is not None and (self._clock() - start) + slowest >= cfg.time_budget_s:
+            if budget is not None and (self._clock() - start) + slowest >= budget:
                 reason = StopReason.TIME_BUDGET
                 break
             t0 = self._clock()
             try:
-                if cfg.time_budget_s is not None and getattr(gen, "accepts_deadline", False):
+                if budget is not None and getattr(gen, "accepts_deadline", False):
                     # hard cap for this single generation (a step cannot be interrupted from outside): what is left of the budget
-                    out = gen(msgs, max_time=max(cfg.time_budget_s - (t0 - start), MIN_STEP_TIME_S)).strip()
+                    out = gen(msgs, max_time=max(budget - (t0 - start), MIN_STEP_TIME_S)).strip()
                 else:
                     out = gen(msgs).strip()
             except Exception as exc:  # noqa: BLE001 - never lose the env: it already holds the calls made so far

@@ -41,7 +41,7 @@ SECRET_PATTERNS = [
     (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "private key"),
     (r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][A-Za-z0-9_\-]{16,}['\"]", "hard-coded credential"),
 ]
-BANNED_PATHS = ["data/*", "*_environment/*", "*.zip", "*.wav", "*.safetensors", "*.bin", "*.pt", "*.pth", "*.gguf", "*.ckpt",
+BANNED_PATHS = ["data/*", "models/*", "*_environment/*", "*.zip", "*.wav", "*.safetensors", "*.bin", "*.pt", "*.pth", "*.gguf", "*.ckpt",
                 ".env", ".env.*", "*.pem", "id_rsa*", "id_ed25519*", ".venv/*"]
 MAX_BYTES = 5 * 1024 * 1024
 

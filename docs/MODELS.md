@@ -12,6 +12,22 @@ Số tham số trong cột này là số **đã đếm bằng code** (`sum(p.num
 
 Tổng hai mô hình dự kiến: 1,5433 + 4,0225 = **5,566B < 6B** (còn dư địa khoảng 0,43B; không đủ chỗ cho một mô hình thứ ba lớn hơn PhoBERT-base 0,135B hay e5-small 0,12B, cần đếm lại nếu thêm classifier Step 8).
 
+## Đếm tham số của hệ thống sẽ nộp (hiệu chỉnh 2026-11-07)
+
+Đếm từ header file `.safetensors` (`python -I -X utf8 scripts/count_params.py --llm <thư mục> --adapter <thư mục> --asr <thư mục>`; không cần nạp model).
+
+| Thành phần | Tham số | Ghi chú |
+|---|---|---|
+| Qwen3-4B (cơ sở) | 4.022.468.096 | từ header của bản trên Hugging Face (máy này không giữ bản cơ sở) |
+| Adapter LoRA r=64 (`q4b_lora`) | 132.120.576 | đếm trên file thật; cộng thêm nếu adapter được áp dụng lúc chạy |
+| PhoWhisper-large đã fine-tune (đã gộp) | 1.543.304.960 | đếm trên file thật |
+| **LLM tổng (cơ sở + adapter)** | **4.154.588.672** (4,1546B) | giới hạn < 5B |
+| **Cả hệ thống, adapter chạy kèm** | **5.697.893.632** (5,6979B) | giới hạn < 6B, còn dư 0,3021B |
+| Cả hệ thống, adapter đã gộp vào cơ sở | 5.565.773.056 (5,5658B) | con số 5,566B ghi ở các nơi khác là trường hợp này |
+
+Cả hai cách đều dưới giới hạn. Nếu thêm mô hình thứ ba (bộ phân loại), dư địa là khoảng 0,30B khi adapter chạy kèm, và 0,43B khi đã gộp.
+Gộp adapter vào cơ sở giảm số tham số và bước tính, nhưng làm tròn bf16 khi gộp có thể làm vài đầu ra khác với bản đã đo, nên nếu gộp thì phải đo lại dev.
+
 ## Checksum (sha256) các file trọng số gửi lên Kaggle
 Nguồn: `kaggle_upload/lifemate-models/manifest.json` (sinh bởi `scripts/prepare_models.py`).
 

@@ -18,6 +18,8 @@ from .jsonl import iter_jsonl
 from .paths import processed_dir, split_dir
 from .prompt import build_messages, load_catalog
 
+MIN_BUDGET_LEFT_S = 1.0     # after a slow recognition step the agent still gets this long (it stops at its first check if needed)
+
 
 class Transcripts:
     """Text of every user utterance of a sample: the gold `audio_text` (train only) or an ASR output file."""
@@ -42,6 +44,9 @@ class Transcripts:
             return cls.from_asr_file(processed_dir() / f"asr_{spec[4:]}_{split}.jsonl")
         raise ValueError(f"unknown transcript source {spec!r} (use 'clean' or 'asr:<tag>')")
 
+    def prepare(self, item: dict) -> None:
+        """Hook called before a sample is processed (the live variant transcribes its audio here)."""
+
     def request(self, item: dict) -> str:
         return item["audio_text"] if self._asr is None else self._asr[item["audio"]]
 
@@ -50,9 +55,41 @@ class Transcripts:
         return [h["audio_text"] for h in users] if self._asr is None else [self._asr[h["audio"]] for h in users]
 
 
-def load_tool_env_class(split: str):
-    """The split's own zaic_tools (each split ships its own version)."""
-    sys.path.insert(0, str(split_dir(split)))
+class StubTranscripts(Transcripts):
+    """Empty text for every utterance. Only for exercising the plumbing (layout, timing, output) without any model."""
+
+    def request(self, item: dict) -> str:
+        return ""
+
+    def history(self, item: dict) -> list[str]:
+        return ["" for h in item["history"] if h["role"] == "user"]
+
+
+class LiveTranscripts(Transcripts):
+    """Transcribes a sample's audio (the request and every earlier user turn) when the sample is about to be processed.
+    One batch per sample. If recognition fails the sample still runs, with empty text, and the failure is counted."""
+
+    def __init__(self, transcriber, root: str | Path):
+        super().__init__({})
+        self._transcriber, self._root = transcriber, Path(root)
+        self.failures = 0
+
+    def prepare(self, item: dict) -> None:
+        wanted = [item["audio"]] + [h["audio"] for h in item["history"] if h["role"] == "user"]
+        missing = [p for p in wanted if p not in self._asr]
+        if not missing:
+            return
+        try:
+            texts = self._transcriber.transcribe([self._root / p for p in missing])
+        except Exception:  # noqa: BLE001 - one bad file must not lose the whole run
+            self.failures += 1
+            texts = [""] * len(missing)
+        self._asr.update(zip(missing, texts, strict=True))
+
+
+def load_tool_env_class(split_path: Path):
+    """The split's own zaic_tools (each split ships its own version), imported from the split folder."""
+    sys.path.insert(0, str(split_path))
     for name in [m for m in sys.modules if m == "zaic_tools" or m.startswith("zaic_tools.")]:
         del sys.modules[name]                       # a previous split's copy must not be reused
     return importlib.import_module("zaic_tools").ToolEnv
@@ -106,19 +143,21 @@ class SplitRunner:
     """Run the agent over the samples of one split, yielding one submission line per sample, in order."""
 
     def __init__(self, split: str, config: AgentConfig, transcripts: Transcripts, backend: Generate | None = None,
-                 oracle: bool = False, tool_env_cls=None):
+                 oracle: bool = False, tool_env_cls=None, data_root: str | Path | None = None):
+        """`data_root`: folder that holds the split folder; default from paths.data_root() (LIFEMATE_DATA_ROOT)."""
         if (backend is None) == (not oracle):
             raise ValueError("pass either a backend or oracle=True")
         self.split = split
         self.transcripts = transcripts
-        self.catalog = load_catalog(split_dir(split) / f"{split}_tools_catalog.json")
+        self.split_path = Path(data_root) / split if data_root else split_dir(split)
+        self.catalog = load_catalog(self.split_path / f"{split}_tools_catalog.json")
         self.agent = Agent(self.catalog, backend or (lambda messages: ""), config)
         self.oracle = oracle
-        self.tool_env_cls = tool_env_cls or load_tool_env_class(split)
+        self.tool_env_cls = tool_env_cls or load_tool_env_class(self.split_path)
         self.stats = RunStats()
 
     def items(self, ids: Iterable[str] | None = None, limit: int = 0, shard: tuple[int, int] | None = None) -> list[dict]:
-        items = list(iter_jsonl(split_dir(self.split) / f"{self.split}.jsonl"))
+        items = list(iter_jsonl(self.split_path / f"{self.split}.jsonl"))
         if ids is not None:
             keep = set(ids)
             items = [i for i in items if i["id"] in keep]
@@ -130,10 +169,16 @@ class SplitRunner:
         return items
 
     def run_item(self, item: dict) -> Outcome:
+        t0 = time.monotonic()
+        self.transcripts.prepare(item)                         # live recognition counts against the sample's time budget
         request, history = self.transcripts.request(item), self.transcripts.history(item)
-        env = self.tool_env_cls(self.split, item["id"], root=str(split_dir(self.split).parent))   # exactly one env per sample
+        prep = time.monotonic() - t0
+        env = self.tool_env_cls(self.split, item["id"], root=str(self.split_path.parent))   # exactly one env per sample
         generate = OracleBackend(build_messages(item, self.catalog, request, history)) if self.oracle else None
-        outcome = self.agent.run(item, env, request, history, generate=generate)
+        budget = self.agent.config.time_budget_s
+        left = None if budget is None else max(budget - prep, MIN_BUDGET_LEFT_S)
+        outcome = self.agent.run(item, env, request, history, generate=generate, time_budget_s=left)
+        outcome.elapsed_s += prep
         self.stats.outcomes.append(outcome)
         return outcome
 
@@ -144,3 +189,10 @@ class SplitRunner:
             if on_progress:
                 on_progress(n, len(items), (time.monotonic() - t0) / n)
             yield {"id": item["id"], "tool_calls": outcome.tool_calls, "state_hash": outcome.state_hash}
+
+
+class NullBackend:
+    """Always answers END, so a run produces empty tool_calls. For testing the plumbing without a model."""
+
+    def __call__(self, messages: list[dict]) -> str:
+        return "END"

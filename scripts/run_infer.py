@@ -3,16 +3,17 @@
   python -I -X utf8 scripts/run_infer.py --split train --ids ... --backend hf --model Qwen/Qwen3-4B --text clean --out ...
   python -I -X utf8 scripts/run_infer.py --split public_test --backend hf --model ... --text asr:phowl --out outputs/pub.jsonl
 --text clean (train only: gold audio_text) | asr:<tag> (data/processed/asr_<tag>_<split>.jsonl)
---time-budget S  stop starting new generation steps once S seconds are used on a sample (0 = off; the contest limit is 30 s)"""
+--time-budget S  stop starting new generation steps once S seconds are used on a sample (0 = off; the contest limit is 30 s)
+--resume         continue an interrupted run from <out>.part (rows go there and the file is renamed to <out> only when the run ends)"""
 import argparse
-import json
-import random
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lifemate.agent import AgentConfig  # noqa: E402
+from lifemate.determinism import seed_everything  # noqa: E402
+from lifemate.jsonl import ResumableJsonlWriter  # noqa: E402
 from lifemate.pipeline import HFBackend, SplitRunner, Transcripts  # noqa: E402
 
 
@@ -28,9 +29,10 @@ def main():
     ap.add_argument("--text", default="clean")
     ap.add_argument("--no-rules", action="store_true", help="disable the deterministic post-processing (src/lifemate/rules.py)")
     ap.add_argument("--time-budget", type=float, default=0.0)
+    ap.add_argument("--resume", action="store_true", help="continue an interrupted run from <out>.part")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    random.seed(0)
+    seed_everything(0)
 
     backend = None
     if a.backend == "hf":
@@ -46,9 +48,10 @@ def main():
         if (n - 1) % 20 == 0:
             print(f"{n}/{total}  avg {avg:.2f}s", flush=True)
 
-    with open(a.out, "w", encoding="utf-8", newline="\n") as fout:     # LF on every OS (the organisers' format is plain JSON Lines)
-        for row in runner.run(items, progress):
-            fout.write(json.dumps(row, ensure_ascii=False) + "\n")
+    with ResumableJsonlWriter(a.out, resume=a.resume) as writer:    # LF, flushed per row, renamed to --out only on success
+        todo = [i for i in items if i["id"] not in writer.done]
+        for row in runner.run(todo, progress):
+            writer.write(row)
     print("done", runner.stats.summary())
 
 

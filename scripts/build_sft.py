@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from lifemate.augment import history_samples, retraction_oversample, retraction_samples, split_holdout, synthetic_samples  # noqa: E402
 from lifemate.grouping import near_duplicate_groups  # noqa: E402
 from lifemate.jsonl import read_jsonl, write_jsonl  # noqa: E402
+from lifemate.manifest import write_manifest  # noqa: E402
 from lifemate.paths import processed_dir, split_dir  # noqa: E402
 from lifemate.prompt import END, build_messages, load_catalog  # noqa: E402
 
@@ -79,6 +80,12 @@ def main():
     groups = near_duplicate_groups([it["audio_text"] for it in items])
     dev_groups = choose_dev_groups(groups, a.seed)
     out.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+
+    def emit(path: Path, rows) -> None:
+        write_jsonl(path, rows)
+        written.append(path)
+
     asr = {}
     if a.asr_tag:
         asr = {d["path"]: d["text"] for d in read_jsonl(processed_dir() / f"asr_{a.asr_tag}_train.jsonl")}
@@ -95,25 +102,30 @@ def main():
             rows[f"sft_{side}_asr"].append({"id": it["id"], "messages": build_messages(it, cat, asr[it["audio"]], noisy)})
     for name, data in rows.items():
         if data:
-            write_jsonl(out / f"{name}.jsonl", data)
+            emit(out / f"{name}.jsonl", data)
 
     train_only = [it for it, gid in zip(items, groups) if gid not in dev_groups]
     if a.aug_oos or a.aug_variants:
         aug, st = synthetic_samples(train_only, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
-        write_jsonl(out / "sft_train_aug.jsonl", aug)
+        emit(out / "sft_train_aug.jsonl", aug)
         print(f"augmentation -> sft_train_aug.jsonl: {len(aug)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
     if a.hist_max:
         hist, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
-        write_jsonl(out / "sft_train_hist.jsonl", hist)
+        emit(out / "sft_train_hist.jsonl", hist)
         print(f"history turns -> sft_train_hist.jsonl: {len(hist)} samples; candidates {st}")
     if a.retract_copies or a.retract_replace or a.retract_cancel:
         real = retraction_oversample(train_only, cat, asr, random.Random(a.seed + 4), a.retract_copies)
         comp, st = retraction_samples(train_only, cat, random.Random(a.seed + 3), a.retract_replace, a.retract_cancel)
-        write_jsonl(out / "sft_train_retract.jsonl", real + comp)
+        emit(out / "sft_train_retract.jsonl", real + comp)
         print(f"retraction -> sft_train_retract.jsonl: {len(real) + len(comp)} samples "
               f"({len(real)} real repeats, {st['replace']} replace, {st['cancel']} cancel)")
     (out / "dev_ids.txt").write_text("\n".join(r["id"] for r in rows["sft_dev"]) + "\n")
+    written.append(out / "dev_ids.txt")
     print(f"groups={len(set(groups))} train={len(rows['sft_train'])} dev={len(rows['sft_dev'])} (dev groups={len(dev_groups)})")
+    inputs = [train_dir / "train.jsonl", train_dir / "train_tools_catalog.json"]
+    if a.asr_tag:
+        inputs.append(processed_dir() / f"asr_{a.asr_tag}_train.jsonl")
+    write_manifest(out / "MANIFEST.build_sft.json", "build_sft", vars(a), inputs, written)
 
     if a.tokenizer:
         from transformers import AutoTokenizer

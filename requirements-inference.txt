@@ -1,0 +1,10 @@
+# Runtime dependencies of the container (torch is installed separately from the CUDA index in docker/Dockerfile).
+# Training used transformers 5.20.2 on Kaggle; pin every package below to the versions of the environment that produced the
+# adapter (run `pip freeze` there) before building the final image, so inference matches the measured behaviour.
+transformers>=4.56,<6
+peft
+accelerate
+safetensors
+tokenizers
+soundfile
+numpy

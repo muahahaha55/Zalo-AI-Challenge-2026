@@ -1,0 +1,15 @@
+# Plumbing-test image: no GPU, no torch, no models. It runs the real entry point with the "null" backend (answers END
+# everywhere) and no speech recognition, which still exercises: layout detection of the mounted split, the split's own
+# zaic_tools, one ToolEnv per sample, offline execution, the output file and its hash.
+# UNVERIFIED: written while the Docker daemon was not running. See docs/DOCKER.md for how to build and what to check.
+#
+#   docker build -f docker/Dockerfile.lite -t lifemate-lite .
+#   docker run --rm --network none -v <public_test folder>:/data -v <empty folder>:/app/result lifemate-lite
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 LIFEMATE_DATA_DIR=/data HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 USE_HUB_KERNELS=NO
+WORKDIR /app
+COPY src ./src
+COPY scripts/run_container.py ./scripts/run_container.py
+
+ENTRYPOINT ["python", "-I", "-X", "utf8", "/app/scripts/run_container.py", "--backend", "null", "--asr", "none"]

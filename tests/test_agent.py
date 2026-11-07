@@ -177,3 +177,15 @@ def test_remaining_budget_never_drops_below_the_minimum():
     agent = Agent(CAT, Backend(), AgentConfig(use_rules=False, time_budget_s=0.2), clock=lambda: now[0])
     agent.run(ITEM, FakeEnv(), "x", [])
     assert seen[0] == 0.5
+
+
+def test_per_sample_budget_overrides_the_configured_one():
+    now = [0.0]
+
+    def backend(messages):
+        now[0] += 4.0
+        return READ
+
+    agent = Agent(CAT, backend, AgentConfig(use_rules=False, time_budget_s=100.0), clock=lambda: now[0])
+    out = agent.run(ITEM, FakeEnv(), "x", [], time_budget_s=6.0)       # e.g. what is left after speech recognition
+    assert out.stop_reason is StopReason.TIME_BUDGET and out.steps == 1

@@ -1,0 +1,16 @@
+.git
+.venv
+.claude
+.githooks
+.pytest_cache
+.ruff_cache
+__pycache__
+data
+outputs
+checkpoints
+notebooks
+tests
+docs
+kaggle_upload
+*.zip
+*.wav

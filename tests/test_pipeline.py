@@ -39,3 +39,34 @@ def test_oracle_replay_scores_100_and_reports_stop_reasons():
     assert scores == [1.0] * 60
     assert {o.stop_reason.value for o in runner.stats.outcomes} <= {"end", "ask"}
     assert "60 samples" in runner.stats.summary() and ROOT.exists()
+
+
+def test_live_transcripts_batch_one_sample_cache_and_survive_failures(tmp_path):
+    calls = []
+
+    class FakeTranscriber:
+        def transcribe(self, paths):
+            calls.append([p.name for p in paths])
+            return [f"text of {p.name}" for p in paths]
+
+    item = {"audio": "audio/s/s.wav", "history": [{"role": "user", "audio": "audio/s/s_u1.wav"}, {"role": "assistant", "text": "ok"}]}
+    live = pipeline.LiveTranscripts(FakeTranscriber(), tmp_path)
+    live.prepare(item)
+    live.prepare(item)                                                              # cached: no second recognition
+    assert calls == [["s.wav", "s_u1.wav"]]                                         # one batch holding the request and the history
+    assert live.request(item) == "text of s.wav" and live.history(item) == ["text of s_u1.wav"]
+
+    class Broken:
+        def transcribe(self, paths):
+            raise RuntimeError("cuda error")
+
+    broken = pipeline.LiveTranscripts(Broken(), tmp_path)
+    broken.prepare(item)
+    assert broken.failures == 1 and broken.request(item) == "" and broken.history(item) == [""]
+
+
+def test_stub_transcripts_and_null_backend():
+    item = {"audio": "a", "history": [{"role": "user", "audio": "b"}, {"role": "assistant"}, {"role": "user", "audio": "c"}]}
+    stub = pipeline.StubTranscripts()
+    assert stub.request(item) == "" and stub.history(item) == ["", ""]
+    assert pipeline.NullBackend()([{"role": "user", "content": "x"}]) == "END"

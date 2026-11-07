@@ -3,7 +3,7 @@
 Cập nhật 2026-11-06. Mọi điểm là **điểm dev nội bộ** (155 mẫu giữ riêng từ train, chia theo nhóm câu gần giống, seed 42), tính bằng bộ chấm tự cài (`scripts/eval.py`). **Chưa có điểm leaderboard**, chưa nộp lần nào. Dev là app đã thấy trong train, còn public có 65% mẫu chứa app lạ, nên điểm public nhiều khả năng thấp hơn.
 
 ## 1. Tóm tắt nhanh (đọc phần này trước)
-**Pipeline hiện tại:** ASR PhoWhisper-large (đã fine-tune LoRA) → Qwen3-4B (SFT LoRA) → vòng lặp từng bước: sinh 1 tool call → `validate` → `call` → đưa kết quả lại → … → `END`. Tổng tham số 5,566B (Qwen3-4B 4,0225B + PhoWhisper 1,5433B, đếm bằng code) < 6B.
+**Pipeline hiện tại:** ASR PhoWhisper-large (đã fine-tune LoRA) → Qwen3-4B (SFT LoRA) → vòng lặp từng bước: sinh 1 tool call → `validate` → `call` → đưa kết quả lại → … → `END`. Tổng tham số 5,566B nếu adapter đã gộp vào Qwen3-4B (4,0225B + PhoWhisper 1,5433B), **5,698B nếu adapter LoRA (0,1321B) chạy kèm lúc suy luận**; cả hai < 6B (đếm từ header file, xem `docs/MODELS.md`).
 
 | Kịch bản đo (cùng adapter `q4b_lora`) | Điểm dev | exec | ask | oos |
 |---|---|---|---|---|

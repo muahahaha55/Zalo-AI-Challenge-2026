@@ -11,12 +11,12 @@ Agent biến yêu cầu giọng nói tiếng Việt thành chuỗi tool call. K�
 
 ## Lệnh thường dùng (Windows, Python 3.12, venv `.venv`)
 - Chạy Python: `.venv/Scripts/python -I -X utf8 <script>` (từ thư mục gốc repo).
-- Kiểm tra tuân thủ: `python scripts/check_compliance.py`; test: `pytest tests` (44 test); lint: `ruff check .` (cài bằng `pip install -r requirements-dev.txt`). Hook pre-commit chạy cả ba.
+- Kiểm tra tuân thủ: `python scripts/check_compliance.py`; test: `pytest tests` (82 test); lint: `ruff check .` (cài bằng `pip install -r requirements-dev.txt`). Hook pre-commit chạy cả ba.
 - Chấm nội bộ: `scripts/eval.py --sub <file> [--ids data/processed/dev_ids.txt]`; kiểm bộ chấm: `scripts/verify_metric.py`.
 - Hook pre-commit: `git config core.hooksPath .githooks` (đã bật ở máy này).
 
 ## Cấu trúc
-- `src/lifemate/` (thư viện, có test, lint đầy đủ): `agent.py` (lớp `Agent`: vòng lặp từng bước, giới hạn thời gian, bắt lỗi backend, lý do dừng), `pipeline.py` (`SplitRunner`, `Transcripts`, `HFBackend`: dùng chung cho `run_infer.py` và container), `prompt.py` (dựng prompt, dùng chung SFT và suy luận), `metric.py` (chấm điểm), `augment.py` (mẫu lịch sử, biến thể, giấu app), `grouping.py` (nhóm câu gần giống, prefix-filter), `rules.py`, `normalize.py`, `paths.py` (đường dẫn, ghi đè bằng `LIFEMATE_DATA_ROOT`), `jsonl.py`.
+- `src/lifemate/` (thư viện, có test, lint đầy đủ): `agent.py` (lớp `Agent`: vòng lặp từng bước, giới hạn thời gian, bắt lỗi backend, lý do dừng), `pipeline.py` (`SplitRunner`, `Transcripts`, `HFBackend`: dùng chung cho `run_infer.py` và container), `prompt.py` (dựng prompt, dùng chung SFT và suy luận), `metric.py` (chấm điểm), `augment.py` (mẫu lịch sử, biến thể, giấu app), `grouping.py` (nhóm câu gần giống, prefix-filter), `rules.py`, `normalize.py`, `paths.py` (đường dẫn, ghi đè bằng `LIFEMATE_DATA_ROOT`), `jsonl.py` (có `ResumableJsonlWriter`: ghi nguyên tử, chạy tiếp), `asr.py` (`WhisperTranscriber`), `container.py` (chạy trong container: tự phát hiện bố cục `/data`, offline, ghi `result/submission.jsonl`), `datacheck.py` + `scripts/preflight_train.py` (kiểm tra dữ liệu trước khi train), `manifest.py` (nguồn gốc dữ liệu), `params.py` + `scripts/count_params.py` (đếm tham số từ file), `determinism.py`. Docker: `docker/` và `docs/DOCKER.md` (bản nháp, chưa dựng được vì Docker không chạy).
 - `scripts/`: `run_asr.py`, `asr_wer.py`, `build_sft.py`, `run_infer.py`, `eval.py`, ...
 - `data/raw/train+public_test/` (dữ liệu gốc, ngoài git), `data/processed/` (đầu ra trung gian, ngoài git).
 - Máy local chỉ có RTX 4050 6 GB: train và đo thời gian chạy trên vast.ai/Kaggle.
