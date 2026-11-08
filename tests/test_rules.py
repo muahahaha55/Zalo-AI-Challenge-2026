@@ -10,7 +10,7 @@ def fix(args, text, name="reminders.create"):
 
 
 def test_kem_15_is_quarter_to():
-    out = fix({"content": "x", "time": "2026-11-25T20:45:00+07:00"}, "Nhắc tôi uống thuốc lúc 8 giờ kém 15 tối mai với.")
+    out = fix({"content": "x", "time": "2026-11-25T20:45:00+07:00"}, "Nhớ báo tôi tưới cây khoảng 8 giờ kém 15 tối mai.")
     assert out["time"] == "2026-11-25T19:45:00+07:00"
 
 
@@ -31,9 +31,9 @@ def test_start_end_only_date_is_fixed():
 
 
 def test_spoken_phone_overrides_garbled_digits():
-    out = fix_args("contacts.update", {"contact_id": "c_01", "phone": "09123456850"},
-                   "số mới là không chín một hai, ba bốn năm, sáu bảy tám năm", NOW)[0]
-    assert out["phone"] == "09123456785"
+    out = fix_args("contacts.update", {"contact_id": "c_01", "phone": "03724568099"},
+                   "đổi sang số không ba bảy hai, bốn năm sáu, tám chín một không", NOW)[0]
+    assert out["phone"] == "03724568910"
 
 
 def test_untouched_when_ambiguous_or_relative():

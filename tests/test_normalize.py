@@ -14,7 +14,7 @@ CASES = {
     "một trăm linh năm": "105",
     "chuyển hai trăm nghìn cho mẹ": "chuyển 200000 cho mẹ",
     "nhắc tôi lúc tám giờ": "nhắc tôi lúc 8 giờ",
-    "không chín một hai ba bốn năm sáu bảy": "09123456 7".replace(" ", ""),
+    "không ba bảy hai bốn năm sáu tám chín": "037245689",
     "bật đèn phòng khách": "bật đèn phòng khách",
     "ba chục nghìn": "30000",
 }

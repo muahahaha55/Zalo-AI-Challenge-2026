@@ -133,6 +133,34 @@ def check_repo(files: list[str], problems: list[str]):
                 problems.append(f"{rel}: possible secret ({why})")
 
 
+def check_data_leaks(files: list[str], problems: list[str]):
+    """The repository is public: no transcript of the competition data may appear in any text file (skipped when the data is absent)."""
+    data = ROOT / "data" / "raw" / "train+public_test" / "train" / "train.jsonl"
+    if not data.is_file():
+        print("note: competition data not on this machine, transcript-leak check skipped")
+        return
+    import json
+    sys.path.insert(0, str(ROOT / "src"))
+    from lifemate.leakcheck import build_index, find_leaks
+    texts = []
+    for line in data.read_text(encoding="utf-8").splitlines():
+        d = json.loads(line)
+        texts.append(d["audio_text"])
+        texts += [h["audio_text"] for h in d["history"] if h["role"] == "user"]
+    windows, wholes = build_index(texts)
+    for rel in files:
+        p = ROOT / rel
+        if not p.is_file() or p.stat().st_size > MAX_BYTES or rel == "scripts/check_compliance.py":
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        hits = find_leaks(text, windows, wholes)
+        if hits:
+            problems.append(f"{rel}: contains text from the competition data (public repo!): {hits[0][:60]!r}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--staged", action="store_true")
@@ -140,6 +168,7 @@ def main():
     problems: list[str] = []
     check_inference(problems)
     check_repo(git_files(a.staged), problems)
+    check_data_leaks(git_files(a.staged), problems)
     if problems:
         print("COMPLIANCE CHECK FAILED:")
         for x in problems:

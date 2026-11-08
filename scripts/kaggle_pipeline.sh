@@ -9,7 +9,7 @@
 # Each stage writes outputs/logs/<stage>.log and outputs/.done_<stage>; re-running a finished stage is a no-op.
 # Env: QWEN, PHO (model dirs, set by kaggle_env.sh); NGPU (default: all visible); MAXLEN (default 5120: the longest sample is 4.4K tokens)
 #      RUN (adapter name, default q4b_lora; use e.g. q4b_aug for a new run), SKIP_ASR=1 (train only the LLM, keep checkpoints/phowl_ft), AUG=1 / HIST=1 / RETRACT=1 (train also on sft_train_aug.jsonl / sft_train_hist.jsonl / sft_train_retract.jsonl from stage aug_data),
-#      SAVE_LIMIT (checkpoints kept, default 2), EPOCHS_SFT / EPOCHS_ASR (default 3); MAX_HOURS (SFT wall-clock budget, default 10.5); TAG (eval_dev: phowl or phowl_ft)
+#      SAVE_LIMIT (checkpoints kept, default 2), SAVE_STEPS (checkpoint every N optimizer steps, default 100; use the steps-per-epoch value to keep epoch ends), EPOCHS_SFT / EPOCHS_ASR (default 3); MAX_HOURS (SFT wall-clock budget, default 10.5); TAG (eval_dev: phowl or phowl_ft)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 STAGE=${1:-status}
@@ -69,7 +69,7 @@ stage_body() {
         if [ -s "$D/sft_train_retract.jsonl" ]; then data="$data $D/sft_train_retract.jsonl"; else echo "RETRACT=1 but $D/sft_train_retract.jsonl is missing: run stage aug_data first"; exit 1; fi
       fi
       local asr_cmd="CUDA_VISIBLE_DEVICES=$asr_gpu $PY scripts/train_asr.py --model $PHO --out $CK/phowl_ft --epochs $EPOCHS_ASR --save-steps 100 $SMOKE_ASR"
-      local sft_cmd="CUDA_VISIBLE_DEVICES=$sft_gpus torchrun --nproc_per_node=$nsft scripts/train_sft.py --model $QWEN --data $data --out $CK/$RUN --save-limit ${SAVE_LIMIT:-2} --epochs $EPOCHS_SFT --max-len $MAXLEN --global-batch 16 --save-steps 100 --max-hours ${MAX_HOURS:-10.5} --resume $SMOKE_SFT"
+      local sft_cmd="CUDA_VISIBLE_DEVICES=$sft_gpus torchrun --nproc_per_node=$nsft scripts/train_sft.py --model $QWEN --data $data --out $CK/$RUN --save-limit ${SAVE_LIMIT:-2} --epochs $EPOCHS_SFT --max-len $MAXLEN --global-batch 16 --save-steps ${SAVE_STEPS:-100} --max-hours ${MAX_HOURS:-10.5} --resume $SMOKE_SFT"
       if [ "${SKIP_ASR:-0}" = 1 ]; then      # LLM only: never touches checkpoints/phowl_ft; all GPUs go to the SFT
         nsft=$NGPU; sft_gpus=$(seq -s, 0 $((NGPU - 1)))
         sft_cmd="CUDA_VISIBLE_DEVICES=$sft_gpus torchrun --nproc_per_node=$nsft ${sft_cmd#*torchrun --nproc_per_node=* }"
@@ -113,6 +113,6 @@ if [ -e "outputs/.done_$STAGE" ] && [ "${FORCE:-0}" != 1 ] && [ "${SMOKE:-0}" !=
 fi
 echo "== stage $STAGE | GPUs: $NGPU | $(date -u +%FT%TZ)"
 if [ "${DRYRUN:-0}" = 1 ]; then stage_body; exit 0; fi
-stage_body 2>&1 | tee "outputs/logs/$STAGE.log"
+stage_body 2>&1 | tee -a "outputs/logs/$STAGE.log"
 [ "${SMOKE:-0}" = 1 ] || touch "outputs/.done_$STAGE"
 echo "== stage $STAGE finished"

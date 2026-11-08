@@ -2,6 +2,13 @@
 
 Đọc `docs/RULES.md` trước. Mốc cứng: nộp Docker **16/11 23:59** (nên nộp sáng 16/11). Mỗi việc dưới đây ghi rõ ai làm, lệnh chạy, và gửi lại gì. Mọi số điểm so với **dev của cấu hình hiện tại: 56,33 (ASR `phowl_ft`) và 65,69 (transcript sạch)**, đều ghi vào `docs/EXPERIMENTS.md`.
 
+## 0. Lưu ý bắt buộc sau lượt A1 (07/11), đọc trước khi chạy tiếp
+
+1. **Notebook và output trên Kaggle phải ở chế độ Private** (RULES 1.3). Phát hiện ngày 07/11: notebook `train-hist` đang **công khai**, và output của nó chứa dẫn xuất của dữ liệu cuộc thi (bản chép lời ASR của audio train và public_test, các file `sft_*.jsonl`, `dev_ids.txt`, `gold_hash_train.json`). **Chủ notebook cần đặt Private ngay** (Settings, Sharing), kiểm tra mọi notebook và dataset khác có gắn dữ liệu, và gỡ các phiên bản đã lưu nếu cần. Sau này mỗi notebook mới phải đặt Private **trước khi** chạy cell đầu tiên.
+2. **Stage `train` và `eval_dev` cần `FORCE=1`** khi các dấu `outputs/.done_*` được khôi phục từ phiên trước (không có thì stage báo "already done" và không chạy gì). Log nay được **nối thêm** (`tee -a`), không còn ghi đè.
+3. **Muốn chọn epoch thì đặt `SAVE_STEPS` bằng số bước mỗi epoch** (ví dụ khoảng 650 cho lượt có 10.404 bước mỗi epoch) cùng `SAVE_LIMIT` đủ lớn (6 trở lên). Mỗi checkpoint khoảng 1,5 GB và output Kaggle giới hạn 20 GB (lượt A1 đã dùng khoảng 14 GB), nên xóa các checkpoint cũ trước.
+4. **Gửi `pip freeze`** (Docker cần ghim đúng phiên bản): thêm một cell vào notebook, chạy trong phiên Kaggle đã train, rồi gửi file: `pip freeze > /kaggle/working/freeze.txt; python -c "import torch,transformers,peft;print(torch.__version__,transformers.__version__,peft.__version__)"`. Phiên bản bàn giao A1 ghi: transformers 5.20.2, peft 0.21.2, torch 2.11.0+cu130, chưa có file chứng minh.
+
 ## A. Việc cho bạn có GPU (Kaggle)
 
 ### A1. Train lại LLM với dữ liệu lịch sử (ưu tiên số 1, ~2,5 giờ)

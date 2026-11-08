@@ -180,10 +180,10 @@ def test_is_simple_request_rejects_scope_ambiguous_text():
 
 def test_retraction_oversample_repeats_real_samples_only():
     from lifemate.augment import retraction_oversample
-    real = _req("R", "a", "Bật đèn lên, à mà thôi, khỏi đèn, mở rèm đi.")
+    real = _req("R", "a", "Mở cửa sổ ra, à mà thôi, khỏi cửa sổ, bật quạt đi.")
     plain = _req("P", "b", "Tắt quạt đi.")
-    asr = {"audio/R/R.wav": "bật đèn lên à mà thôi khỏi đèn mở rèm đi", "audio/P/P.wav": "tắt quạt đi"}
+    asr = {"audio/R/R.wav": "mở cửa sổ ra à mà thôi khỏi cửa sổ bật quạt đi", "audio/P/P.wav": "tắt quạt đi"}
     rows = retraction_oversample([real, plain], _plain_cat("abc"), asr, random.Random(0), 2)
     assert sorted(r["id"] for r in rows) == ["R#rx0", "R#rx1"]
     texts = {r["id"]: r["messages"][1]["content"].split("[YÊU CẦU]\n")[1] for r in rows}
-    assert texts["R#rx0"].startswith("Bật đèn lên") and texts["R#rx1"] == "bật đèn lên à mà thôi khỏi đèn mở rèm đi"
+    assert texts["R#rx0"].startswith("Mở cửa sổ ra") and texts["R#rx1"] == "mở cửa sổ ra à mà thôi khỏi cửa sổ bật quạt đi"
