@@ -130,6 +130,13 @@ class HFBackend:
 class RunStats:
     outcomes: list[Outcome] = field(default_factory=list)
 
+    def as_dict(self) -> dict:
+        if not self.outcomes:
+            return {"samples": 0}
+        t = sorted(o.elapsed_s for o in self.outcomes)
+        return {"samples": len(t), "mean_s": round(sum(t) / len(t), 3), "p95_s": round(t[int(.95 * (len(t) - 1))], 3),
+                "max_s": round(t[-1], 3), "stop_reasons": dict(Counter(o.stop_reason.value for o in self.outcomes).most_common())}
+
     def summary(self) -> str:
         if not self.outcomes:
             return "no samples"

@@ -30,3 +30,26 @@ def test_manifest_lists_inputs_outputs_rows_and_is_reproducible(tmp_path):
 def test_git_state_never_raises(tmp_path):
     state = manifest.git_state(tmp_path)                                               # not a repository
     assert set(state) == {"commit", "dirty"}
+
+
+def test_run_manifest_records_weights_inputs_output_and_stats(tmp_path):
+    import json
+
+    from lifemate.manifest import model_entry, write_run_manifest
+    model = tmp_path / "adapter"
+    model.mkdir()
+    (model / "adapter_model.safetensors").write_bytes(b"abc")
+    (model / "config.json").write_text("{}")
+    data = tmp_path / "in.jsonl"
+    data.write_text('{"id": 1}\n')
+    out = tmp_path / "out.jsonl"
+    out.write_text('{"id": 1}\n{"id": 2}\n')
+    path = tmp_path / "m.json"
+    write_run_manifest(path, "t", {"a": 1}, {"llm": None, "adapter": model, "asr": tmp_path / "missing"}, [data], out, {"samples": 2})
+    m = json.loads(path.read_text(encoding="utf-8"))
+    assert m["models"]["adapter"]["weights"][0]["name"] == "adapter_model.safetensors"      # config.json is not a weight file
+    assert m["models"]["adapter"]["weights"][0]["sha256"] == model_entry(model)["weights"][0]["sha256"]
+    assert m["models"]["llm"] is None and m["models"]["asr"] is None
+    assert m["outputs"][0]["rows"] == 2 and m["inputs"][0]["path"].endswith("in.jsonl")
+    assert m["stats"] == {"samples": 2}
+    assert isinstance(m["libraries"], dict)

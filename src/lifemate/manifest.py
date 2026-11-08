@@ -62,3 +62,44 @@ def write_manifest(path: str | Path, tool: str, args: dict, inputs: Iterable[str
     manifest = build_manifest(tool, args, inputs, outputs)
     Path(path).write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     return manifest
+
+
+LIBRARIES = ("torch", "transformers", "peft", "accelerate", "tokenizers", "safetensors")
+
+
+def library_versions(names: Iterable[str] = LIBRARIES) -> dict[str, str]:
+    from importlib import metadata
+    out = {}
+    for name in names:
+        try:
+            out[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            continue
+    return out
+
+
+def model_entry(folder: str | Path | None) -> dict | None:
+    """Weight files (*.safetensors) of a model folder with checksums; None when no folder is given or it is not a folder."""
+    if not folder or not Path(folder).is_dir():
+        return None
+    files = sorted(Path(folder).rglob("*.safetensors"))
+    return {"path": Path(folder).as_posix(),
+            "weights": [{"name": p.relative_to(folder).as_posix(), "sha256": sha256_file(p), "bytes": p.stat().st_size} for p in files]}
+
+
+def build_run_manifest(tool: str, args: dict, models: dict[str, str | Path | None], inputs: Iterable[str | Path],
+                       output: str | Path, stats: dict) -> dict:
+    """Provenance of an inference output: code version, libraries, model weights, input files, arguments, result checksum.
+    Answers "which adapter and which transcripts produced this submission?". `stats` (timings, stop reasons) is the only
+    part that is not reproducible byte for byte."""
+    manifest = build_manifest(tool, args, inputs, [output])
+    manifest["libraries"] = library_versions()
+    manifest["models"] = {role: model_entry(path) for role, path in models.items()}
+    manifest["stats"] = stats
+    return manifest
+
+
+def write_run_manifest(path: str | Path, *build_args, **build_kwargs) -> dict:
+    manifest = build_run_manifest(*build_args, **build_kwargs)
+    Path(path).write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    return manifest

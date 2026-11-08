@@ -51,4 +51,5 @@ Tham số của container (`--llm`, `--adapter`, `--asr`, `--time-budget`, `--no
 - [ ] Chạy 3–5 lần liên tiếp cho file kết quả giống từng byte.
 - [ ] `scripts/verify_submission.py` đạt trên kết quả chạy `public_test` trong container.
 - [ ] `scripts/check_compliance.py` đạt.
+- [ ] Lưu bản ghi nguồn gốc của lần chạy kiểm tra cuối: thêm `--manifest /app/result/run_manifest.json` (hoặc biến `LIFEMATE_MANIFEST`) khi **tự kiểm tra**; file ghi commit, phiên bản thư viện, sha256 trọng số, file đầu vào, sha256 kết quả và thời gian. Mặc định **tắt** trong container nộp, vì BTC thu thư mục `result/` và việc băm trọng số mất khoảng một phút. `scripts/run_infer.py` ghi `<out>.manifest.json` mặc định (`--manifest none` để tắt).
 - [ ] Đối chiếu với tài liệu chính thức của BTC khi nhận được.

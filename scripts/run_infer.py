@@ -4,6 +4,7 @@
   python -I -X utf8 scripts/run_infer.py --split public_test --backend hf --model ... --text asr:phowl --out outputs/pub.jsonl
 --text clean (train only: gold audio_text) | asr:<tag> (data/processed/asr_<tag>_<split>.jsonl)
 --time-budget S  stop starting new generation steps once S seconds are used on a sample (0 = off; the contest limit is 30 s)
+--manifest PATH  provenance file written after a successful run (default <out>.manifest.json; 'none' = off)
 --resume         continue an interrupted run from <out>.part (rows go there and the file is renamed to <out> only when the run ends)"""
 import argparse
 import sys
@@ -14,6 +15,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from lifemate.agent import AgentConfig  # noqa: E402
 from lifemate.determinism import seed_everything  # noqa: E402
 from lifemate.jsonl import ResumableJsonlWriter  # noqa: E402
+from lifemate.manifest import write_run_manifest  # noqa: E402
+from lifemate.paths import processed_dir, split_dir  # noqa: E402
 from lifemate.pipeline import HFBackend, SplitRunner, Transcripts  # noqa: E402
 
 
@@ -30,6 +33,7 @@ def main():
     ap.add_argument("--no-rules", action="store_true", help="disable the deterministic post-processing (src/lifemate/rules.py)")
     ap.add_argument("--time-budget", type=float, default=0.0)
     ap.add_argument("--resume", action="store_true", help="continue an interrupted run from <out>.part")
+    ap.add_argument("--manifest", default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     seed_everything(0)
@@ -53,6 +57,15 @@ def main():
         for row in runner.run(todo, progress):
             writer.write(row)
     print("done", runner.stats.summary())
+    if a.manifest != "none":
+        sd = split_dir(a.split)
+        inputs = [sd / f"{a.split}.jsonl", sd / f"{a.split}_tools_catalog.json"]
+        if a.text.startswith("asr:"):
+            inputs.append(processed_dir() / f"asr_{a.text[4:]}_{a.split}.jsonl")
+        if a.ids:
+            inputs.append(Path(a.ids))
+        write_run_manifest(a.manifest or f"{a.out}.manifest.json", "run_infer", vars(a), {"llm": a.model, "adapter": a.adapter},
+                           inputs, a.out, runner.stats.as_dict())
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from pathlib import Path
 from .agent import AgentConfig
 from .determinism import seed_everything
 from .jsonl import ResumableJsonlWriter
+from .manifest import write_run_manifest
 from .pipeline import HFBackend, LiveTranscripts, NullBackend, SplitRunner, StubTranscripts, Transcripts
 
 IGNORED_JSONL = {"sample_submission"}
@@ -111,6 +112,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--no-rules", action="store_true")
     ap.add_argument("--resume", action="store_true", help="continue an interrupted run from <out>.part")
     ap.add_argument("--limit", type=int, default=0, help="first N samples only (testing)")
+    ap.add_argument("--manifest", default=env("LIFEMATE_MANIFEST"), help="write a provenance file here after a successful run "
+                    "(off by default: the organisers collect result/; hashing the weights takes about a minute)")
     return ap.parse_args(argv)
 
 
@@ -138,4 +141,9 @@ def main(argv: list[str] | None = None) -> int:
         for row in runner.run(todo, progress):
             writer.write(row)
     print("done", runner.stats.summary(), flush=True)
+    if args.manifest:
+        asr_dir = args.asr if Path(args.asr).is_dir() else None
+        write_run_manifest(args.manifest, "container", vars(args), {"llm": args.llm, "adapter": None if args.adapter == "none" else args.adapter,
+                           "asr": asr_dir}, [split_dir / f"{layout.split}.jsonl", split_dir / f"{layout.split}_tools_catalog.json"],
+                           args.out, runner.stats.as_dict())
     return 0
