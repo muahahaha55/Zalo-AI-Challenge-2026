@@ -71,6 +71,36 @@ Gửi điểm (tổng, exec/ask/oos) và file đầu ra. Đây là mốc "chưa 
 
 **Lưu ý quan trọng sau khi kéo bản mới:** bản cũ của bước sinh biến thể (`--aug-variants`) có lỗi: với mẫu `ask`, nó coi app mà câu hỏi nhắc tới là "không liên quan" và có thể xóa app đó khỏi danh sách đã cài (161/217 mẫu `ask` bị ảnh hưởng, khoảng 30% biến thể của chúng bị hỏng). Đã sửa. **File `sft_train_aug.jsonl` đã dựng trước đó trên Kaggle cần dựng lại** (`bash scripts/kaggle_pipeline.sh aug_data` với `FORCE=1`) trước khi dùng `AUG=1`.
 
+### A5. Dữ liệu mới: ghép đoạn call thật vào môi trường khác (sau A4, so trên bộ chia A4)
+Dữ liệu này có nhãn đúng ngay từ khi dựng. Các bước:
+1. Lấy một đoạn call liên tiếp của cùng một app trong một mẫu train.
+2. Chạy lại đoạn đó trong môi trường của một mẫu train khác có cài app ấy:
+   - ID được lấy lại từ kết quả đọc của chính môi trường mới;
+   - ngày được dời theo `current_time` của môi trường mới;
+   - giá trị enum có thể được đổi.
+3. Mọi call phải qua `validate` và `call`. Chỉ cần một call bị từ chối là bỏ cả mẫu.
+4. Câu nói do **model chạy trên máy** viết. Dùng Qwen3-14B hoặc lớn hơn (32B vừa card 96 GB), thêm vào notebook dưới dạng Kaggle Model hoặc dataset **Private**. Không gửi dữ liệu sang bất kỳ API bên ngoài nào. Prompt đưa 3 câu thật của **app khác** làm mẫu cách nói.
+5. Lọc qua 3 lớp:
+   - luật đơn giản: bỏ câu lộ ID hoặc tên tool, câu kể theo ngôi thứ ba, câu thiếu nội dung chữ của tham số, câu quá ngắn hoặc quá dài;
+   - chính model viết tự trả lời CÓ/KHÔNG;
+   - **khứ hồi (quan trọng nhất)**: một model khác đọc câu, chạy agent trong môi trường đó, và chỉ giữ mẫu nếu ra cùng trạng thái và gọi cùng các tool với nhãn.
+
+Kiểm tra trên máy local (08/11, không có GPU lớn):
+- **Phần call:** 2000 mẫu, với 40 app và 117 tool. Phát lại khớp 2000/2000 kết quả, và agent chạy với "oracle" (phát lại nhãn) đạt 2000/2000. Có 23% mẫu mang chuỗi tool chưa từng có trong train, và 95% mẫu kết thúc bằng thao tác ghi.
+- **Phần chữ, thử với Qwen3-1.7B:** **câu sai gần hết** (chép câu mẫu hoặc tả sai thao tác). Model tự chấm vẫn trả lời CÓ cho cả 24/24 câu, luật đơn giản chỉ loại được 7/24, còn bước khứ hồi loại được cả 5/5 câu sai đã thử. Kết luận: **model nhỏ không dùng được**. Phải đọc mẫu đầu ra của model 14B trở lên trước khi train. Luật "thiếu nội dung tham số" cũng loại nhầm 24% câu thật, nên bỏ đi một số mẫu tốt.
+```bash
+python -I -X utf8 scripts/gen_calls.py --n 6000                     # CPU, vài phút -> data/processed/callgen_pending.jsonl
+python -I -X utf8 scripts/gen_text.py --model /kaggle/input/<qwen3-14b> --inp data/processed/callgen_pending.jsonl \
+       --out data/processed/callgen_text.jsonl --batch 64              # GPU; chạy lại thì tự bỏ qua dòng đã có
+# DỪNG Ở ĐÂY lần đầu: chạy với --n 200, gửi 30 dòng ngẫu nhiên của callgen_text.jsonl (trường audio_text + label.tool_calls) để duyệt
+python -I -X utf8 scripts/verify_callgen.py --model /kaggle/input/<qwen3-14b> --inp data/processed/callgen_text.jsonl \
+       --out data/processed/callgen_checked.jsonl                      # GPU, vài giây mỗi mẫu; dùng model CHƯA tinh chỉnh
+# A4 có và không có dữ liệu mới (cùng bộ chia, chỉ khác file train):
+python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_rental,package_tracking,shopping_list,podcast_radio,loyalty \
+       --hist-max 300 --callgen data/processed/callgen_checked.jsonl   # thêm holdout/sft_train_cg.jsonl, đã bỏ mẫu dùng app bị giấu
+```
+Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
+
 ## B. Việc làm tay, không cần GPU (ai cũng làm được)
 
 | # | Việc | Làm thế nào | Gửi lại |

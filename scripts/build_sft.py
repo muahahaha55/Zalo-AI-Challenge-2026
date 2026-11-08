@@ -7,6 +7,8 @@ Extra data (train split only, never dev) goes to SEPARATE files so the base file
                                    sft_train_retract.jsonl: the real self-correction samples repeated K times (safe: real labels), plus N
                                    "<short request>, à thôi, <real request>" and M "<short request>, à thôi khỏi" compositions that teach
                                    ignoring what the speaker took back (lifemate.augment.retraction_*)
+  --callgen FILE                   sft_train_cg.jsonl: samples from scripts/gen_calls.py + gen_text.py (transplanted real call
+                                   segments, request text written by a local model), filtered by lifemate.callgen.text_ok
   --hold-apps a,b,c                'unseen apps' experiment: samples whose gold uses these apps become holdout/eval_ids.txt, the others
                                    lose the apps from their prompts; everything is written to data/processed/holdout/"""
 import argparse
@@ -64,6 +66,7 @@ def main():
     ap.add_argument("--retract-cancel", type=int, default=0, help="M compositions '<request>, <marker> khỏi' (answer: no call)")
     ap.add_argument("--hold-apps", default="", help="comma-separated apps to hide from training ('unseen apps' experiment)")
     ap.add_argument("--hist-max", type=int, default=0, help="N: also write sft_train_hist.jsonl with up to N samples from train histories")
+    ap.add_argument("--callgen", default="", help="callgen_text.jsonl from scripts/gen_text.py -> sft_train_cg.jsonl")
     a = ap.parse_args()
 
     train_dir, out = split_dir("train"), processed_dir()
@@ -119,12 +122,42 @@ def main():
         emit(out / "sft_train_retract.jsonl", real + comp)
         print(f"retraction -> sft_train_retract.jsonl: {len(real) + len(comp)} samples "
               f"({len(real)} real repeats, {st['replace']} replace, {st['cancel']} cancel)")
+    if a.callgen:
+        from lifemate.callgen import apply_holdout, text_ok
+        allowed = {it["id"] for it in train_only}          # base and donors must be training samples of THIS split
+        hold = {x.strip() for x in a.hold_apps.split(",") if x.strip()}
+        cg_rows, why = [], Counter()
+        for s in read_jsonl(a.callgen):
+            if s["base"] not in allowed or not set(s["donors"]) <= allowed:
+                why["not_train"] += 1
+                continue
+            if s.get("verified") is False:                 # the local model judged the text not to match the calls
+                why["not_verified"] += 1
+                continue
+            if s.get("roundtrip") is False:                # scripts/verify_callgen.py: acting on the text did not reach the label
+                why["roundtrip_failed"] += 1
+                continue
+            s = apply_holdout(s, hold) if hold else s
+            if s is None:
+                why["held_app"] += 1
+                continue
+            ok, reason = text_ok(s["audio_text"], s, cat)
+            why[reason] += 1
+            if ok:
+                msgs = build_messages(s, cat, s["audio_text"], [])
+                check_round_trip(s, msgs)
+                cg_rows.append({"id": s["id"], "messages": msgs})
+        emit(out / "sft_train_cg.jsonl", cg_rows)
+        inputs_extra = [Path(a.callgen)]
+        print(f"callgen -> sft_train_cg.jsonl: {len(cg_rows)} samples; {dict(why)}")
     (out / "dev_ids.txt").write_text("\n".join(r["id"] for r in rows["sft_dev"]) + "\n")
     written.append(out / "dev_ids.txt")
     print(f"groups={len(set(groups))} train={len(rows['sft_train'])} dev={len(rows['sft_dev'])} (dev groups={len(dev_groups)})")
     inputs = [train_dir / "train.jsonl", train_dir / "train_tools_catalog.json"]
     if a.asr_tag:
         inputs.append(processed_dir() / f"asr_{a.asr_tag}_train.jsonl")
+    if a.callgen:
+        inputs += inputs_extra
     write_manifest(out / "MANIFEST.build_sft.json", "build_sft", vars(a), inputs, written)
 
     if a.tokenizer:

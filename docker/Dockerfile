@@ -18,10 +18,11 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends libsndfile1 && rm -rf /var/lib/apt/lists/*
 
 # Dependencies are installed while building (needs network then) and never at run time.
-# Pin the versions to those of the training environment before the final build (see docs/DOCKER.md).
+# Hugging Face stack pinned to the training environment (requirements-inference.txt). torch is pinned to the build verified
+# on 07/11; the CUDA build used in training is unknown (the Kaggle freeze came from a CPU session), see docs/DOCKER.md.
 WORKDIR /app
 COPY requirements-inference.txt ./
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124 \
+RUN pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124 \
  && pip install --no-cache-dir -r requirements-inference.txt
 
 COPY src ./src

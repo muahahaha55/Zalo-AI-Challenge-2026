@@ -1,10 +1,12 @@
 # Runtime dependencies of the container (torch is installed separately from the CUDA index in docker/Dockerfile).
-# Training used transformers 5.20.2 on Kaggle; pin every package below to the versions of the environment that produced the
-# adapter (run `pip freeze` there) before building the final image, so inference matches the measured behaviour.
-transformers>=4.56,<6
-peft
-accelerate
-safetensors
-tokenizers
-soundfile
-numpy
+# Pinned to the Kaggle environment that trained the adapter: docs/env/kaggle_freeze_2026-11-08.txt (pip freeze, 08/11).
+# That freeze was taken in a CPU session (torch 2.11.0+cpu, Python 3.13), so it fixes the Hugging Face stack but NOT the
+# CUDA build of torch; see docs/DOCKER.md.
+transformers==5.20.2
+peft==0.21.2
+accelerate==1.15.0
+safetensors==0.8.0
+tokenizers==0.23.3
+huggingface_hub==1.33.0
+numpy==2.1.3
+soundfile==0.14.0
