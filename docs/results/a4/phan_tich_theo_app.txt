@@ -1,0 +1,33 @@
+# Phân tích tổng hợp A4 (chỉ số đếm, không có nội dung câu nói hay dự đoán)
+# sinh bởi scratch script từ unseen_*.jsonl (không nằm trong repo), chấm bằng scripts/eval.py và compare_runs.py
+# A = q4b_holdout (không có dữ liệu lịch sử), B = q4b_holdout_hist (cộng 300 mẫu lịch sử); 174 mẫu dùng 6 app bị giấu, chữ sạch
+
+chấm lại bằng bộ chấm local: N=174  A=41.93  B=43.37
+
+Theo app bị giấu (một mẫu có thể dùng nhiều app nên số mẫu cộng lại > N):
+app                   n       A       B     B-A
+flights              33   41.41   41.11   -0.30
+bike_rental          30   46.17   47.94   +1.77
+loyalty              29   22.03   18.05   -3.98
+podcast_radio        28   55.95   58.33   +2.38
+package_tracking     25   34.00   40.67   +6.67
+shopping_list        23   51.67   58.19   +6.52
+mẫu dùng từ 2 app bị giấu trở lên: 2/174
+
+Cơ cấu điểm mỗi mẫu (0 điểm / một phần / tối đa):
+  A: 0 điểm  87 (50.0%) | một phần  33 (19.0%) | tối đa  54 (31.0%)
+  B: 0 điểm  85 (48.9%) | một phần  31 (17.8%) | tối đa  58 (33.3%)
+
+Phân loại thô các mẫu 0 điểm (chỉ so tên tool với gold):
+q4b_holdout: 87 mẫu 0 điểm
+    45 (51.7%)  gọi tool SAI (có tool ngoài gold)
+    29 (33.3%)  đúng bộ tool, SAI tham số/hash
+     9 (10.3%)  đúng loại tool nhưng THIẾU call
+     3 ( 3.4%)  đúng loại tool nhưng THỪA call
+     1 ( 1.1%)  không gọi gì (từ chối)
+q4b_holdout_hist: 85 mẫu 0 điểm
+    41 (48.2%)  gọi tool SAI (có tool ngoài gold)
+    29 (34.1%)  đúng bộ tool, SAI tham số/hash
+    10 (11.8%)  đúng loại tool nhưng THIẾU call
+     4 ( 4.7%)  đúng loại tool nhưng THỪA call
+     1 ( 1.2%)  không gọi gì (từ chối)
