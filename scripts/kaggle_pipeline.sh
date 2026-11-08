@@ -8,7 +8,7 @@
 #   DRYRUN=1 ...  print the commands only;  FORCE=1 ... redo a stage that is already marked done
 # Each stage writes outputs/logs/<stage>.log and outputs/.done_<stage>; re-running a finished stage is a no-op.
 # Env: QWEN, PHO (model dirs, set by kaggle_env.sh); NGPU (default: all visible); MAXLEN (default 5120: the longest sample is 4.4K tokens)
-#      RUN (adapter name, default q4b_lora; use e.g. q4b_aug for a new run), SKIP_ASR=1 (train only the LLM, keep checkpoints/phowl_ft), AUG=1 / HIST=1 / RETRACT=1 (train also on sft_train_aug.jsonl / sft_train_hist.jsonl / sft_train_retract.jsonl from stage aug_data),
+#      RUN (adapter name, default q4b_lora; use e.g. q4b_aug for a new run), SKIP_ASR=1 (train only the LLM, keep checkpoints/phowl_ft), AUG=1 / HIST=1 / RETRACT=1 / ASRX=1 (train also on sft_train_aug.jsonl / sft_train_hist.jsonl / sft_train_retract.jsonl / sft_train_asr_x.jsonl from stage aug_data; ASRX = the train samples again with the base recogniser's noisier transcripts),
 #      SAVE_LIMIT (checkpoints kept, default 2), SAVE_STEPS (checkpoint every N optimizer steps, default 100; use the steps-per-epoch value to keep epoch ends), EPOCHS_SFT / EPOCHS_ASR (default 3); MAX_HOURS (SFT wall-clock budget, default 10.5); TAG (eval_dev: phowl or phowl_ft)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -65,6 +65,9 @@ stage_body() {
       if [ "${HIST:-0}" = 1 ]; then
         if [ -s "$D/sft_train_hist.jsonl" ]; then data="$data $D/sft_train_hist.jsonl"; else echo "HIST=1 but $D/sft_train_hist.jsonl is missing: run stage aug_data first"; exit 1; fi
       fi
+      if [ "${ASRX:-0}" = 1 ]; then
+        if [ -s "$D/sft_train_asr_x.jsonl" ]; then data="$data $D/sft_train_asr_x.jsonl"; else echo "ASRX=1 but $D/sft_train_asr_x.jsonl is missing: run stage aug_data first (needs asr_phowl_train.jsonl)"; exit 1; fi
+      fi
       if [ "${RETRACT:-0}" = 1 ]; then
         if [ -s "$D/sft_train_retract.jsonl" ]; then data="$data $D/sft_train_retract.jsonl"; else echo "RETRACT=1 but $D/sft_train_retract.jsonl is missing: run stage aug_data first"; exit 1; fi
       fi
@@ -94,7 +97,7 @@ stage_body() {
       run "$PY scripts/build_sft.py --asr-tag phowl_ft" ;;
     aug_data)        # train-only augmentation: synthetic out-of-scope samples + shuffled/dropped-app variants (see build_sft.py)
       if [ "${SMOKE:-0}" = 1 ]; then echo "skipped in SMOKE (would overwrite real data)"; return 0; fi
-      run "$PY scripts/build_sft.py --asr-tag phowl_ft --aug-oos ${AUG_OOS:-100} --aug-variants ${AUG_VARIANTS:-1} --hist-max ${HIST_MAX:-700} --retract-copies ${RETRACT_COPIES:-2} --retract-replace ${RETRACT_REPLACE:-60} --retract-cancel ${RETRACT_CANCEL:-20}" ;;
+      run "$PY scripts/build_sft.py --asr-tag phowl_ft --asr-extra-tag phowl --aug-oos ${AUG_OOS:-100} --aug-variants ${AUG_VARIANTS:-1} --hist-max ${HIST_MAX:-700} --retract-copies ${RETRACT_COPIES:-2} --retract-replace ${RETRACT_REPLACE:-60} --retract-cancel ${RETRACT_CANCEL:-20}" ;;
     eval_dev)        # HANDOFF 2.3: dev score with the LoRA adapter; TAG=phowl (default) or phowl_ft
       local tag=${TAG:-phowl} txt
       txt="asr:$tag"; if [ "${SMOKE:-0}" = 1 ]; then txt=clean; fi   # smoke ASR files only cover a few wavs

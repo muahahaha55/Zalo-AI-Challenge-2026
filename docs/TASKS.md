@@ -101,6 +101,19 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
 ```
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
 
+### A6. Huấn luyện thêm trên câu ASR nhiễu thật (ASRX; khoảng +30% thời gian train so với A1)
+**Lý do (đo ngày 08/11):** trên dev, câu ASR làm mất ròng khoảng 15 điểm so với câu sạch (66,82 so với 56,98), chủ yếu do nghe sai động từ, tên riêng và số. Model hiện được train trên bản ghi của `phowl_ft`, mà ASR đó đã học chính các file audio train, nên bản ghi trên train gần như sạch. Với giọng lạ, lỗi nhiều hơn hẳn: ASR gốc có WER dev 25,4%, bản đã fine-tune 9,8%, và điểm public thấp hơn dev. Cách làm: thêm lại các mẫu train với bản ghi của ASR **gốc** `phowl` (nhãn giữ nguyên, chỉ đổi chữ đầu vào).
+```bash
+FORCE=1 bash scripts/kaggle_pipeline.sh aug_data          # cần data/processed/asr_phowl_train.jsonl; ghi thêm sft_train_asr_x.jsonl (1390 mẫu)
+SKIP_ASR=1 HIST=0 ASRX=1 RUN=q4b_asrx EPOCHS_SFT=3 SAVE_LIMIT=4 bash scripts/kaggle_pipeline.sh train
+```
+Đo **hai** điểm dev cho cả `q4b_lora` và `q4b_asrx`, vì chỉ cái thứ hai trả lời câu hỏi của ý này:
+```bash
+TAG=phowl_ft RUN=... bash scripts/kaggle_pipeline.sh eval_dev     # như thường lệ (nhiễu nhẹ, WER 9,8%)
+TAG=phowl    RUN=... bash scripts/kaggle_pipeline.sh eval_dev     # nhiễu nặng (WER 25,4%), gần với giọng lạ hơn
+```
+Giữ `q4b_asrx` nếu điểm với `phowl` tăng rõ (dùng `scripts/compare_runs.py`) và điểm với `phowl_ft` không giảm. Cẩn thận: đây là cùng một nhãn lặp lại, nên phải so với `q4b_lora` train thêm số bước tương đương, nếu không không phân biệt được "thêm nhiễu" với "train lâu hơn". Nếu GPU hạn chế, so `q4b_asrx` với `q4b_lora` trước, chỉ khi có dấu hiệu tốt mới làm phép so công bằng.
+
 ## B. Việc làm tay, không cần GPU (ai cũng làm được)
 
 | # | Việc | Làm thế nào | Gửi lại |

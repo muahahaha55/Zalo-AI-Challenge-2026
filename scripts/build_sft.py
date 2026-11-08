@@ -7,6 +7,10 @@ Extra data (train split only, never dev) goes to SEPARATE files so the base file
                                    sft_train_retract.jsonl: the real self-correction samples repeated K times (safe: real labels), plus N
                                    "<short request>, à thôi, <real request>" and M "<short request>, à thôi khỏi" compositions that teach
                                    ignoring what the speaker took back (lifemate.augment.retraction_*)
+  --asr-extra-tag T                sft_train_asr_x.jsonl: the TRAIN samples again, with the transcripts of ANOTHER recogniser (usually the
+                                   base `phowl`, WER ~25%). The fine-tuned recogniser was trained on these very audio files, so its
+                                   train transcripts are nearly clean; the base recogniser gives the real, much noisier errors that
+                                   unseen speakers cause. Targets are identical (same labels), only the input text differs.
   --callgen FILE                   sft_train_cg.jsonl: samples from scripts/gen_calls.py + gen_text.py (transplanted real call
                                    segments, request text written by a local model), filtered by lifemate.callgen.text_ok
   --hold-apps a,b,c                'unseen apps' experiment: samples whose gold uses these apps become holdout/eval_ids.txt, the others
@@ -66,6 +70,7 @@ def main():
     ap.add_argument("--retract-cancel", type=int, default=0, help="M compositions '<request>, <marker> khỏi' (answer: no call)")
     ap.add_argument("--hold-apps", default="", help="comma-separated apps to hide from training ('unseen apps' experiment)")
     ap.add_argument("--hist-max", type=int, default=0, help="N: also write sft_train_hist.jsonl with up to N samples from train histories")
+    ap.add_argument("--asr-extra-tag", default="", help="also write sft_train_asr_x.jsonl with the transcripts of this recogniser (e.g. phowl)")
     ap.add_argument("--callgen", default="", help="callgen_text.jsonl from scripts/gen_text.py -> sft_train_cg.jsonl")
     a = ap.parse_args()
 
@@ -108,6 +113,16 @@ def main():
             emit(out / f"{name}.jsonl", data)
 
     train_only = [it for it, gid in zip(items, groups) if gid not in dev_groups]
+    if a.asr_extra_tag:
+        asr2 = {d["path"]: d["text"] for d in read_jsonl(processed_dir() / f"asr_{a.asr_extra_tag}_train.jsonl")}
+        extra = []
+        for it in train_only:
+            noisy = [asr2[h["audio"]] for h in it["history"] if h["role"] == "user"]
+            msgs = build_messages(it, cat, asr2[it["audio"]], noisy)
+            check_round_trip(it, msgs)
+            extra.append({"id": f"{it['id']}#asr_{a.asr_extra_tag}", "messages": msgs})
+        emit(out / "sft_train_asr_x.jsonl", extra)
+        print(f"extra recogniser '{a.asr_extra_tag}' -> sft_train_asr_x.jsonl: {len(extra)} samples")
     if a.aug_oos or a.aug_variants:
         aug, st = synthetic_samples(train_only, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
         emit(out / "sft_train_aug.jsonl", aug)
@@ -156,6 +171,8 @@ def main():
     inputs = [train_dir / "train.jsonl", train_dir / "train_tools_catalog.json"]
     if a.asr_tag:
         inputs.append(processed_dir() / f"asr_{a.asr_tag}_train.jsonl")
+    if a.asr_extra_tag:
+        inputs.append(processed_dir() / f"asr_{a.asr_extra_tag}_train.jsonl")
     if a.callgen:
         inputs += inputs_extra
     write_manifest(out / "MANIFEST.build_sft.json", "build_sft", vars(a), inputs, written)
