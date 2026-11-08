@@ -7,7 +7,9 @@
 1. **Notebook và output trên Kaggle phải ở chế độ Private** (RULES 1.3). Phát hiện ngày 07/11: notebook `train-hist` đang **công khai**, và output của nó chứa dẫn xuất của dữ liệu cuộc thi (bản chép lời ASR của audio train và public_test, các file `sft_*.jsonl`, `dev_ids.txt`, `gold_hash_train.json`). **Chủ notebook cần đặt Private ngay** (Settings, Sharing), kiểm tra mọi notebook và dataset khác có gắn dữ liệu, và gỡ các phiên bản đã lưu nếu cần. Sau này mỗi notebook mới phải đặt Private **trước khi** chạy cell đầu tiên.
 2. **Stage `train` và `eval_dev` cần `FORCE=1`** khi các dấu `outputs/.done_*` được khôi phục từ phiên trước (không có thì stage báo "already done" và không chạy gì). Log nay được **nối thêm** (`tee -a`), không còn ghi đè.
 3. **Muốn chọn epoch thì đặt `SAVE_STEPS` bằng số bước mỗi epoch** (ví dụ khoảng 650 cho lượt có 10.404 bước mỗi epoch) cùng `SAVE_LIMIT` đủ lớn (6 trở lên). Mỗi checkpoint khoảng 1,5 GB và output Kaggle giới hạn 20 GB (lượt A1 đã dùng khoảng 14 GB), nên xóa các checkpoint cũ trước.
-4. **Gửi `pip freeze`** (Docker cần ghim đúng phiên bản): thêm một cell vào notebook, chạy trong phiên Kaggle đã train, rồi gửi file: `pip freeze > /kaggle/working/freeze.txt; python -c "import torch,transformers,peft;print(torch.__version__,transformers.__version__,peft.__version__)"`. Phiên bản bàn giao A1 ghi: transformers 5.20.2, peft 0.21.2, torch 2.11.0+cu130, chưa có file chứng minh.
+4. **`pip freeze` đã nhận (08/11, `docs/env/kaggle_freeze_2026-11-08.txt`)** và Docker đã ghim theo đó (transformers 5.20.2, peft 0.21.2, accelerate 1.15.0). **Còn thiếu bản torch CUDA:** file lấy trong phiên chỉ có CPU (`torch 2.11.0+cpu`). Trong phiên **có GPU**, chạy `python -c "import torch,sys;print(torch.__version__, torch.version.cuda, sys.version)"` và gửi dòng in ra.
+5. **Mã trên Kaggle phải là bản mới nhất** (từ commit `783526d`): thành viên chạy GPU tự đóng gói và tải lên (`bash scripts/kaggle_pack.sh code`, rồi New Version của dataset mã, giữ **Private**) và gắn phiên bản mới vào notebook trước khi chạy A4, A5, A6. Thiếu bước này thì `ASRX`, `callgen` và các sửa pipeline không có.
+6. **Thứ tự và hạn:** A4 (hạn 10/11) trước, rồi A6, A5 chỉ khi A4 cho thấy app lạ là vấn đề. Nếu đến 10/11 A4 chưa chạy được thì bỏ A4 và A5. Hướng dẫn chạy từng bước gửi riêng.
 
 ## A. Việc cho bạn có GPU (Kaggle)
 
@@ -67,6 +69,7 @@ bash scripts/infer_multi_gpu.sh train outputs/unseen_q4b_holdout.jsonl --ids dat
      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout --text clean
 python -I -X utf8 scripts/eval.py --sub outputs/unseen_q4b_holdout.jsonl --ids data/processed/holdout/eval_ids.txt
 ```
+Lệnh trên dùng `--asr-tag phowl` (bản ghi của ASR gốc) còn `q4b_lora` dùng `phowl_ft`, nên **không so điểm A4 với điểm dev của `q4b_lora`**; chỉ so các cấu hình A4 với nhau (`q4b_holdout` và `q4b_holdout_hist`, cái thứ hai thêm `sft_train_hist.jsonl` vào `--data`).
 Gửi điểm (tổng, exec/ask/oos) và file đầu ra. Đây là mốc "chưa thấy app" để so các ý sau (che tên, ghép app). Mỗi lần so thêm một ý thì train lại với cùng bộ chia này.
 
 **Lưu ý quan trọng sau khi kéo bản mới:** bản cũ của bước sinh biến thể (`--aug-variants`) có lỗi: với mẫu `ask`, nó coi app mà câu hỏi nhắc tới là "không liên quan" và có thể xóa app đó khỏi danh sách đã cài (161/217 mẫu `ask` bị ảnh hưởng, khoảng 30% biến thể của chúng bị hỏng). Đã sửa. **File `sft_train_aug.jsonl` đã dựng trước đó trên Kaggle cần dựng lại** (`bash scripts/kaggle_pipeline.sh aug_data` với `FORCE=1`) trước khi dùng `AUG=1`.
