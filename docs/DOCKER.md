@@ -44,6 +44,7 @@ Chạy hai lần và so sánh hai file bằng `cmp` để kiểm tra tái lập.
 Tham số của container (`--llm`, `--adapter`, `--asr`, `--time-budget`, `--no-rules`, `--resume`, `--limit`) có giá trị mặc định lấy từ biến môi trường trong Dockerfile. `--time-budget` mặc định 25 giây mỗi mẫu **gồm cả nhận dạng giọng nói**; giới hạn của đề là 30 giây.
 
 ## Danh sách kiểm tra trước khi nộp (khớp RULES 5.2)
+- [ ] Kiểm tra thư mục `models/` bằng `python -I -X utf8 scripts/check_models.py` (so sha256 của Qwen3-4B, adapter và ASR đã gộp với `models.lock.json`, cấm file pickle, rồi kiểm giới hạn tham số). Chạy **trước** `docker build` cuối.
 - [ ] Đếm tham số: `python -I -X utf8 scripts/count_params.py --llm models/llm --adapter models/adapter --asr models/asr` (hiện 5,698B với adapter chạy kèm; xem `docs/MODELS.md`).
 - [ ] Offline thật: `scripts/check_offline.py` (chặn socket) chạy được với model thật đã đóng gói.
 - [ ] Thời gian: p95 mỗi mẫu trên A30 (hoặc GPU tương đương) trong 30 giây, có dư địa.

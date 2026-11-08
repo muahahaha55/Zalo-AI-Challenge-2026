@@ -1,0 +1,23 @@
+{
+  "note": "Expected weight files of the final image (docker/Dockerfile expects models/llm, models/adapter, models/asr). Checked by scripts/check_models.py. Update only together with docs/MODELS.md when a model is deliberately replaced.",
+  "llm": {
+    "required": ["config.json", "tokenizer.json", "tokenizer_config.json"],
+    "weights": {
+      "model-00001-of-00003.safetensors": "328a91d3122359d5547f9d79521205bc0a46e1f79a792dfe650e99fc2d651223",
+      "model-00002-of-00003.safetensors": "6cd087b316306a68c562436b5492edbcf6e16c6dba3a1308279caa5a58e21ca5",
+      "model-00003-of-00003.safetensors": "e4bf436957184f4eeb86a80e9db394503f1f56446b2e6b7edeac5b81470f4ca1"
+    }
+  },
+  "adapter": {
+    "required": ["adapter_config.json"],
+    "weights": {
+      "adapter_model.safetensors": "25e86a6bcad0336c02253a396249160c72ca548297e94a20646b49dcc910d868"
+    }
+  },
+  "asr": {
+    "required": ["config.json", "tokenizer.json", "tokenizer_config.json"],
+    "weights": {
+      "model.safetensors": "cffba381278e485f69e14888536e610ab415727dc1bde031b17097a0eff64d2c"
+    }
+  }
+}
