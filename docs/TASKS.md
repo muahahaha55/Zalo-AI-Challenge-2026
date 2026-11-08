@@ -8,8 +8,8 @@
 2. **Stage `train` và `eval_dev` cần `FORCE=1`** khi các dấu `outputs/.done_*` được khôi phục từ phiên trước (không có thì stage báo "already done" và không chạy gì). Log nay được **nối thêm** (`tee -a`), không còn ghi đè.
 3. **Muốn chọn epoch thì đặt `SAVE_STEPS` bằng số bước mỗi epoch** (ví dụ khoảng 650 cho lượt có 10.404 bước mỗi epoch) cùng `SAVE_LIMIT` đủ lớn (6 trở lên). Mỗi checkpoint khoảng 1,5 GB và output Kaggle giới hạn 20 GB (lượt A1 đã dùng khoảng 14 GB), nên xóa các checkpoint cũ trước.
 4. **`pip freeze` đã nhận (08/11, `docs/env/kaggle_freeze_2026-11-08.txt`)** và Docker đã ghim theo đó (transformers 5.20.2, peft 0.21.2, accelerate 1.15.0). **Còn thiếu bản torch CUDA:** file lấy trong phiên chỉ có CPU (`torch 2.11.0+cpu`). Trong phiên **có GPU**, chạy `python -c "import torch,sys;print(torch.__version__, torch.version.cuda, sys.version)"` và gửi dòng in ra.
-5. **Mã trên Kaggle phải là bản mới nhất** (từ commit `783526d`): thành viên chạy GPU tự đóng gói và tải lên (`bash scripts/kaggle_pack.sh code`, rồi New Version của dataset mã, giữ **Private**) và gắn phiên bản mới vào notebook trước khi chạy A4, A5, A6. Thiếu bước này thì `ASRX`, `callgen` và các sửa pipeline không có.
-6. **Thứ tự và hạn:** A4 (hạn 10/11) trước, rồi A6, A5 chỉ khi A4 cho thấy app lạ là vấn đề. Nếu đến 10/11 A4 chưa chạy được thì bỏ A4 và A5. Hướng dẫn chạy từng bước gửi riêng.
+5. **Mã trên Kaggle phải là bản mới nhất** (từ commit `783526d` trở đi): thành viên chạy GPU tự đóng gói và tải lên (`bash scripts/kaggle_pack.sh code`, rồi New Version của dataset mã, giữ **Private**) và gắn phiên bản mới vào notebook trước khi chạy A4, A5, A6. Thiếu bước này thì ``callgen` và các sửa pipeline không có.
+6. **Thứ tự và hạn:** A4 (hạn 10/11) trước, rồi A5 chỉ khi A4 cho thấy app lạ là vấn đề. **A6 (ASRX) đã rút lại**, xem cuối mục A. Nếu đến 10/11 A4 chưa chạy được thì bỏ A4 và A5. Hướng dẫn chạy từng bước gửi riêng.
 
 ## A. Việc cho bạn có GPU (Kaggle)
 
@@ -104,18 +104,9 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
 ```
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
 
-### A6. Huấn luyện thêm trên câu ASR nhiễu thật (ASRX; khoảng +30% thời gian train so với A1)
-**Lý do (đo ngày 08/11):** trên dev, câu ASR làm mất ròng khoảng 15 điểm so với câu sạch (66,82 so với 56,98), chủ yếu do nghe sai động từ, tên riêng và số. Model hiện được train trên bản ghi của `phowl_ft`, mà ASR đó đã học chính các file audio train, nên bản ghi trên train gần như sạch. Với giọng lạ, lỗi nhiều hơn hẳn: ASR gốc có WER dev 25,4%, bản đã fine-tune 9,8%, và điểm public thấp hơn dev. Cách làm: thêm lại các mẫu train với bản ghi của ASR **gốc** `phowl` (nhãn giữ nguyên, chỉ đổi chữ đầu vào).
-```bash
-FORCE=1 bash scripts/kaggle_pipeline.sh aug_data          # cần data/processed/asr_phowl_train.jsonl; ghi thêm sft_train_asr_x.jsonl (1390 mẫu)
-SKIP_ASR=1 HIST=0 ASRX=1 RUN=q4b_asrx EPOCHS_SFT=3 SAVE_LIMIT=4 bash scripts/kaggle_pipeline.sh train
-```
-Đo **hai** điểm dev cho cả `q4b_lora` và `q4b_asrx`, vì chỉ cái thứ hai trả lời câu hỏi của ý này:
-```bash
-TAG=phowl_ft RUN=... bash scripts/kaggle_pipeline.sh eval_dev     # như thường lệ (nhiễu nhẹ, WER 9,8%)
-TAG=phowl    RUN=... bash scripts/kaggle_pipeline.sh eval_dev     # nhiễu nặng (WER 25,4%), gần với giọng lạ hơn
-```
-Giữ `q4b_asrx` nếu điểm với `phowl` tăng rõ (dùng `scripts/compare_runs.py`) và điểm với `phowl_ft` không giảm. Cẩn thận: đây là cùng một nhãn lặp lại, nên phải so với `q4b_lora` train thêm số bước tương đương, nếu không không phân biệt được "thêm nhiễu" với "train lâu hơn". Nếu GPU hạn chế, so `q4b_asrx` với `q4b_lora` trước, chỉ khi có dấu hiệu tốt mới làm phép so công bằng.
+### A6 (ASRX): đã rút lại (08/11)
+Ý định ban đầu: thêm các mẫu train với bản ghi của ASR gốc `phowl`, vì tưởng LLM chỉ thấy bản ghi gần sạch của `phowl_ft`. **Tiền đề sai**: `q4b_lora` và `q4b_hist` đã được train với bản ghi `phowl` (ASR gốc, WER 25%), nên dữ liệu "ASRX" trùng 1390/1390 hàng với dữ liệu đã dùng. Cộng thêm việc `aug_data` ghi lại `sft_train_asr.jsonl` bằng bản `phowl_ft`, chạy A6 chỉ thêm một bản gần sạch, không đo được điều đã dự định. Mã (`--asr-extra-tag`, cờ `ASRX`) đã gỡ. Phát hiện bởi bên chạy GPU khi đối chiếu dữ liệu.
+Hệ quả: khoảng 15 điểm mất do ASR trên dev không phải do LLM chưa thấy chữ nhiễu. Hướng còn lại là cải thiện chính ASR hoặc đưa nhiều kết quả ASR vào prompt (chưa làm, chưa đo).
 
 ## B. Việc làm tay, không cần GPU (ai cũng làm được)
 
