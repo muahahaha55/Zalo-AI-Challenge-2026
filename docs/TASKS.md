@@ -105,6 +105,7 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
 
 ### A4b. Tham chiếu "app đã thấy" cho A4 (khoảng 10 phút GPU; làm trước A5)
+**Kết quả (09/11):** khoảng cách đã thấy − lạ của `q4b_holdout` là +20,9 (chỉ exec+ask, [+10,6; +31,4]), trên ngưỡng 15 nên **làm A5** (bước thử 200 mẫu trước, chưa train). Xem `docs/BAN_GIAO_A4b.md`.
 A4 cho 41,93 trên 174 mẫu dùng app bị giấu, nhưng chưa biết model đó đạt bao nhiêu trên app **đã thấy**, nên chưa biết app lạ làm mất bao nhiêu điểm. Con số "mất khoảng 24 điểm" hiện lấy từ `q4b_lora` trên dev (66,82), khác tập mẫu, khác dữ liệu train, khác loại ASR trong train: không so được.
 Cách đo đúng: chạy chính `q4b_holdout` (adapter còn trong output notebook A4) trên `data/processed/holdout/dev_ids.txt` (132 mẫu dev dùng app đã thấy, không nằm trong train của bộ chia này), chữ sạch, luật bật như A4:
 ```bash
