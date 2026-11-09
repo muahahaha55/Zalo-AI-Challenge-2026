@@ -1,0 +1,44 @@
+################ q4b_holdout: đã thấy so với lạ
+=== q4b_holdout: app ĐÃ THẤY (n=132) so với app LẠ (n=174), chữ sạch, luật bật
+nhóm                            đã thấy   (n)       lạ   (n)  khoảng cách   khoảng tin cậy 95%
+TỔNG (cách TASKS tính)            66.03   132    41.93   174       +24.10   [+13.87, +34.09]
+chỉ exec + ask (cùng loại)        62.85   118    41.93   174       +20.92   [+10.56, +31.41]
+exec                              62.84   102    42.80   153       +20.04   [+8.56, +31.08]
+ask                               62.92    16    35.56    21       +27.36   [-1.37, +56.27]
+oos (chỉ có ở đã thấy)            92.86    14
+
+Ngưỡng của Phương: dưới ~6 điểm thì bỏ A5, trên ~15 điểm thì làm A5, ở giữa thì báo lại.
+Lưu ý: 'TỔNG' có thêm các mẫu oos ở phía đã thấy (dễ điểm), không có ở phía app lạ, nên thổi phồng khoảng cách;
+khoảng cách 'chỉ exec + ask' so cùng loại mẫu nên đáng tin hơn. Hai tập mẫu khác nhau, khoảng tin cậy là của hai mẫu độc lập.
+  - TỔNG: khoảng cách +24.10 -> trên 15: làm A5
+  - exec + ask: khoảng cách +20.92 -> trên 15: làm A5
+
+################ q4b_holdout_hist: đã thấy so với lạ
+=== q4b_holdout_hist: app ĐÃ THẤY (n=132) so với app LẠ (n=174), chữ sạch, luật bật
+nhóm                            đã thấy   (n)       lạ   (n)  khoảng cách   khoảng tin cậy 95%
+TỔNG (cách TASKS tính)            62.52   132    43.37   174       +19.15   [+8.79, +29.31]
+chỉ exec + ask (cùng loại)        59.77   118    43.37   174       +16.40   [+5.58, +27.15]
+exec                              61.24   102    44.88   153       +16.36   [+4.83, +27.52]
+ask                               50.42    16    32.38    21       +18.04   [-11.43, +47.32]
+oos (chỉ có ở đã thấy)            85.71    14
+
+Ngưỡng của Phương: dưới ~6 điểm thì bỏ A5, trên ~15 điểm thì làm A5, ở giữa thì báo lại.
+Lưu ý: 'TỔNG' có thêm các mẫu oos ở phía đã thấy (dễ điểm), không có ở phía app lạ, nên thổi phồng khoảng cách;
+khoảng cách 'chỉ exec + ask' so cùng loại mẫu nên đáng tin hơn. Hai tập mẫu khác nhau, khoảng tin cậy là của hai mẫu độc lập.
+  - TỔNG: khoảng cách +19.15 -> trên 15: làm A5
+  - exec + ask: khoảng cách +16.40 -> trên 15: làm A5
+
+################ So từng cặp trên app ĐÃ THẤY: q4b_holdout -> q4b_holdout_hist
+N=132   q4b_holdout: 66.03   q4b_holdout_hist: 62.52
+paired diff (q4b_holdout_hist-q4b_holdout): -3.51 pts   95% bootstrap interval [-9.43, +2.37]   -> NOT distinguishable from 0
+samples better 14, worse 16, equal 102
+  exec  n=102  diff  -1.60   better 13  worse 12
+  ask   n= 16  diff -12.50   better 1  worse 3
+  oos   n= 14  diff  -7.14   better 0  worse 1
+largest changes: train_0003(-100), train_0038(-100), train_0511(-100), train_0615(+100), train_0637(+100), train_0683(-100), train_0957(-100), train_1031(-100)
+
+################ Từ chối nhầm và cơ cấu dự đoán trên app đã thấy
+132 mẫu: 118 có call, 14 ngoài phạm vi (oos)
+file                                           từ chối nhầm   oos đúng  dự đoán ask  call TB
+seen_q4b_holdout.jsonl                             0/118       13/14             19     2.17
+seen_q4b_holdout_hist.jsonl                        2/118       12/14             15     2.08

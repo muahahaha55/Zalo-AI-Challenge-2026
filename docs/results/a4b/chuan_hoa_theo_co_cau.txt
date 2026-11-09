@@ -1,0 +1,10 @@
+# Khoảng cách đã thấy - lạ sau khi CÂN BẰNG cơ cấu mẫu (chỉ exec + ask; trọng số theo cơ cấu của tập app LẠ). Chỉ số tổng hợp.
+# Lý do: tập đã thấy có 53% mẫu có lịch sử, tập app lạ có 72%; số call gold cũng khác. Sinh từ seen_*.jsonl và unseen_*.jsonl (không nằm trong repo).
+q4b_holdout
+  chuẩn hóa theo có/không lịch sử            : đã thấy  61.59 | lạ  41.93 | khoảng cách +19.66
+  chuẩn hóa theo số call gold (1,2,3,4+)     : đã thấy  63.34 | lạ  41.93 | khoảng cách +21.41
+  chuẩn hóa theo lịch sử x số call (1,2,3+)  : đã thấy  63.04 | lạ  41.93 | khoảng cách +21.11
+q4b_holdout_hist
+  chuẩn hóa theo có/không lịch sử            : đã thấy  59.72 | lạ  43.37 | khoảng cách +16.35
+  chuẩn hóa theo số call gold (1,2,3,4+)     : đã thấy  59.13 | lạ  43.37 | khoảng cách +15.76
+  chuẩn hóa theo lịch sử x số call (1,2,3+)  : đã thấy  59.69 | lạ  43.37 | khoảng cách +16.32

@@ -1,0 +1,2 @@
+done 132 samples; mean 1.63s p95 3.47s max 6.21s; stop reasons {'end': 113, 'ask': 19}
+done 132 samples; mean 1.58s p95 3.42s max 4.10s; stop reasons {'end': 116, 'ask': 15, 'repeated_read': 1}
