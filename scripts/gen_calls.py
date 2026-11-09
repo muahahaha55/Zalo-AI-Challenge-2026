@@ -16,10 +16,18 @@ from lifemate.pipeline import load_tool_env_class  # noqa: E402
 from lifemate.prompt import load_catalog  # noqa: E402
 
 
+def parse_weights(text: str) -> dict[int, float] | None:
+    if not text:
+        return None
+    pairs = [part.split(":") for part in text.split(",")]
+    return {int(k): float(v) for k, v in pairs}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=3000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--weights", default="", help="share of samples built from 1,2,3.. segments, e.g. 1:0.3,2:0.4,3:0.3 (default 1:0.45,2:0.4,3:0.15)")
     ap.add_argument("--out", default=str(processed_dir() / "callgen_pending.jsonl"))
     a = ap.parse_args()
     train = split_dir("train")
@@ -27,7 +35,8 @@ def main():
     dev = set((processed_dir() / "dev_ids.txt").read_text(encoding="utf-8").split())
     items = [it for it in read_jsonl(train / "train.jsonl") if it["id"] not in dev]
     env_cls = load_tool_env_class(train)
-    samples, stats = generate(items, cat, lambda i: env_cls("train", i, root=str(data_root())), random.Random(a.seed), a.n)
+    samples, stats = generate(items, cat, lambda i: env_cls("train", i, root=str(data_root())), random.Random(a.seed), a.n,
+                                weights=parse_weights(a.weights))
     rng = random.Random(a.seed + 1)
     rows = [{**s, "prompt": describe(s, style_examples(s, items, rng))} for s in samples]
     write_jsonl(a.out, rows)

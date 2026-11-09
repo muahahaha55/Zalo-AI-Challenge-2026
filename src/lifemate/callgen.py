@@ -172,18 +172,21 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
 
 
 def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object], rng: random.Random, n: int,
-             max_tries_factor: int = 30) -> tuple[list[dict], dict]:
-    """Up to n new samples (no text yet). Returns (samples, stats). Reproducible for a given seed and item order."""
+             max_tries_factor: int = 30, weights: dict[int, float] | None = None) -> tuple[list[dict], dict]:
+    """Up to n new samples (no text yet). Returns (samples, stats). Reproducible for a given seed and item order.
+    `weights`: share of samples built from 1, 2, 3 ... segments (default SEGMENT_COUNT_WEIGHTS). Long chains are the ones the
+    text filters reject most often, so ask for more of them when the output will be filtered."""
     bases = [it for it in items if not it["history"]]
     donors = [it for it in items if segments(it, cat)]
     out: list[dict] = []
     stats = {"tries": 0, "no_segment": 0, "rejected": 0, "duplicate": 0}
     seen_keys: set[str] = set()
-    counts, weights = list(SEGMENT_COUNT_WEIGHTS), list(SEGMENT_COUNT_WEIGHTS.values())
+    shares = weights or SEGMENT_COUNT_WEIGHTS
+    counts, probs = list(shares), list(shares.values())
     while len(out) < n and stats["tries"] < n * max_tries_factor:
         stats["tries"] += 1
         base = rng.choice(bases)
-        want = rng.choices(counts, weights)[0]
+        want = rng.choices(counts, probs)[0]
         env = env_factory(base["id"])
         calls: list[dict] = []
         results: list[dict] = []
@@ -220,6 +223,18 @@ _ID_LIKE = re.compile(r"\b[a-z]{1,8}_\d+\b")
 _TOOL_LIKE = re.compile(r"\b[a-z_]+\.[a-z_]+\b")
 MIN_WORDS, MAX_WORDS = 3, 60
 MIN_ARG_COVERAGE = 0.5
+VIETNAMESE_MARKS = set("àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ")
+MIN_WORDS_FOR_DIACRITICS = 6
+
+
+def foreign_script(text: str) -> bool:
+    """True if a letter is not Latin script (CJK, Cyrillic, Thai, ...): models sometimes switch language mid-sentence."""
+    return any(ch.isalpha() and not unicodedata.name(ch, "").startswith("LATIN") for ch in text)
+
+
+def lacks_vietnamese(text: str) -> bool:
+    """A real spoken request of a few words always carries Vietnamese diacritics; text without any is not Vietnamese."""
+    return len(text.split()) >= MIN_WORDS_FOR_DIACRITICS and not (set(text.lower()) & VIETNAMESE_MARKS)
 
 
 def _words(text: str) -> list[str]:
@@ -253,6 +268,10 @@ def text_ok(text: str, sample: dict, cat: dict) -> tuple[bool, str]:
     n = len(text.split())
     if n < MIN_WORDS or n > MAX_WORDS:
         return False, "length"
+    if foreign_script(text):
+        return False, "foreign_script"
+    if lacks_vietnamese(text):
+        return False, "not_vietnamese"
     if _ID_LIKE.search(text) or _TOOL_LIKE.search(text):
         return False, "id_or_tool_name"
     name = sample["context"].get("user_profile", {}).get("name", "")

@@ -109,3 +109,18 @@ def test_generate_is_reproducible_and_labels_replay():
         ids = {"a": ["e1", "e2"], "b": ["f1"]}[s["base"]]
         assert all(c["arguments"]["event_id"] in ids for c in s["label"]["tool_calls"] if c["name"] == "cal.cancel")
         assert "cal.list" in cg.describe(s, [("hủy lịch", s["label"]["tool_calls"])])
+
+
+def test_foreign_script_and_missing_diacritics_are_rejected():
+    s = item("a", ["e1"], "2026-11-01", None)
+    assert cg.text_ok("hủy giúp tôi lịch đá bóng chiều nay", s, CAT)[0]
+    assert cg.text_ok("hủy giúp tôi lịch 取消 chiều nay nhé", s, CAT)[1] == "foreign_script"
+    assert cg.text_ok("huy giup toi lich da bong chieu nay", s, CAT)[1] == "not_vietnamese"
+    assert cg.text_ok("cancel my football meeting this afternoon", s, CAT)[1] == "not_vietnamese"
+
+
+def test_generate_honours_segment_count_weights():
+    items = [item("a", ["e1", "e2"], "2026-11-01", None), item("b", ["f1"], "2026-11-09", None)]
+    env = lambda i: FakeEnv(["e1", "e2"] if i == "a" else ["f1"])  # noqa: E731
+    only_one, _ = cg.generate(items, CAT, env, random.Random(3), 6, weights={1: 1.0})
+    assert only_one and all(len({c["name"].split(".")[0] for c in s["label"]["tool_calls"]}) == 1 for s in only_one)
