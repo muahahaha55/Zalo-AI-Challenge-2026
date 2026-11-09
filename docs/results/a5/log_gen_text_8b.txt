@@ -1,0 +1,10 @@
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   1%|          | 2/399 [00:00<00:23, 16.89it/s]Loading weights:  18%|█▊        | 70/399 [00:00<00:00, 379.09it/s]Loading weights:  32%|███▏      | 127/399 [00:00<00:00, 459.01it/s]Loading weights:  48%|████▊     | 191/399 [00:00<00:00, 524.89it/s]Loading weights:  62%|██████▏   | 248/399 [00:00<00:00, 535.08it/s]Loading weights:  78%|███████▊  | 312/399 [00:00<00:00, 566.84it/s]Loading weights:  94%|█████████▍| 377/399 [00:00<00:00, 591.68it/s]Loading weights: 100%|██████████| 399/399 [00:00<00:00, 526.90it/s]
+200 rows, 0 already done, 200 to write
+  32/200  verified so far 27
+  64/200  verified so far 52
+  96/200  verified so far 78
+  128/200  verified so far 100
+  160/200  verified so far 123
+  192/200  verified so far 151
+  200/200  verified so far 158
+thời gian gen_text: 49 s (gồm nạp model)

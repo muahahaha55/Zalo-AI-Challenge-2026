@@ -1,0 +1,15 @@
+train thật n=1000 từ: trung vị 22.0 p90 35 | CJK 0 | không dấu tiếng Việt 0 | có '<think' 0 | có dấu ? 29 | mở đầu giống nhau nhiều nhất 3.2% | khác nhau 999
+8b         n= 200 từ: trung vị 18.0 p90 25 | CJK 1 | không dấu tiếng Việt 0 | có '<think' 0 | có dấu ? 7 | mở đầu giống nhau nhiều nhất 5.0% | khác nhau 200
+9b         n= 200 từ: trung vị 21.5 p90 36 | CJK 2 | không dấu tiếng Việt 1 | có '<think' 0 | có dấu ? 3 | mở đầu giống nhau nhiều nhất 4.0% | khác nhau 200
+
+giữ 8b 148, giữ 9b 171, giữ cả hai 135, chỉ 8b 13, chỉ 9b 36, không cái nào 16
+'CÓ' của 8b 158, của 9b 179, trùng quyết định 155/200
+
+giữ theo số call (giữ/tổng) : 1c: 8b 83/90, 9b 85 | 2c: 8b 41/59, 9b 51 | 3c: 8b 15/29, 9b 20 | 4c: 8b 6/15, 9b 10 | 5c: 8b 2/2, 9b 1 | 6c: 8b 1/4, 9b 3 | 7c: 8b 0/1, 9b 1
+cùng một mẫu mà hai model viết GIỐNG HỆT: 0
+30 dòng mẫu của 8b và 9b có cùng id: True (30/30 id trùng)
+  8b: trong 30 dòng, text_ok=28, verified=21, cả hai=19
+  9b: trong 30 dòng, text_ok=27, verified=26, cả hai=24
+
+8b: câu có ký tự Hán/Nhật/Hàn trong 200: 1; trong số được GIỮ sau lọc: 1
+9b: câu có ký tự Hán/Nhật/Hàn trong 200: 2; trong số được GIỮ sau lọc: 2

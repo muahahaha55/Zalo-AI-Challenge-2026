@@ -1,0 +1,16 @@
+GEN_SIZE=8b
+thư mục: /kaggle/input/models/manojkumarcs28/qwen3-8b/pytorch/qwen3-8b/1/Qwen 3-8B
+config.json sha256: f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30
+model_type=qwen3 hidden_size=4096 num_hidden_layers=36 tổng safetensors=16.38 GB
+  model-00001-of-00005.safetensors  3996250744 bytes
+  model-00002-of-00005.safetensors  3993160032 bytes
+  model-00003-of-00005.safetensors  3959604768 bytes
+  model-00004-of-00005.safetensors  3187841392 bytes
+  model-00005-of-00005.safetensors  1244659840 bytes
+tệp trong thư mục: LICENSE, README.md, config.json, generation_config.json, gitattributes, merges.txt, model-00001-of-00005.safetensors, model-00002-of-00005.safetensors, model-00003-of-00005.safetensors, model-00004-of-00005.safetensors, model-00005-of-00005.safetensors, model.safetensors.index.json, tokenizer.json, tokenizer_config.json, vocab.json
+ĐỐI CHIẾU với bản gốc Hugging Face: 5/5 shard trùng sha256 (đủ, là bản gốc)
+  model-00001-of-00005.safetensors: TRÙNG bản gốc
+  model-00002-of-00005.safetensors: TRÙNG bản gốc
+  model-00003-of-00005.safetensors: TRÙNG bản gốc
+  model-00004-of-00005.safetensors: TRÙNG bản gốc
+  model-00005-of-00005.safetensors: TRÙNG bản gốc
