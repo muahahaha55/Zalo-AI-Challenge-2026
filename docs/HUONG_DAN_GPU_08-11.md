@@ -38,12 +38,13 @@ Nếu tiện, chạy thêm `q4b_holdout_hist` trên cùng tệp. Gửi lại: đ
 **Cách đọc:** khoảng cách = (điểm app đã thấy) trừ (41,93 của app lạ). Dưới khoảng 6 điểm: **bỏ A5**. Trên khoảng 15 điểm: **làm A5**. Ở giữa: báo lại, ta cân nhắc theo giờ GPU còn lại.
 
 ### A5: chỉ làm sau khi biết kết quả A4b
-Cần một model lớn hơn 1,7B cho bước viết câu (1,7B đã thử và viết sai gần hết; mức đủ tốt chưa đo). **Thử theo thứ tự rẻ đến đắt: Qwen3-8B, rồi 14B, rồi 32B** (32B bf16 vừa 96 GB, 72B không vừa), mỗi lần 200 mẫu rồi đọc 30 câu, dừng ở model nhỏ nhất cho câu chấp nhận được. Model này chỉ tạo dữ liệu, không nằm trong bài nộp nên giới hạn 5B/6B không áp dụng. Cách lấy mà vẫn giữ Internet Off: trong notebook, Add Input > Models, chọn biến thể Qwen3 tương ứng trong Kaggle Models; không tải từ Hugging Face trong phiên. Không đưa dữ liệu cuộc thi lên Kaggle Model công khai. Nếu Kaggle không có sẵn, báo lại để tìm cách khác.
+Cần một model lớn hơn 1,7B cho bước viết câu (1,7B đã thử và viết sai gần hết; mức đủ tốt chưa đo). **Thử theo thứ tự rẻ đến đắt: Qwen3-8B và Qwen3.5-9B (thử song song, mỗi cái 200 mẫu), rồi 14B, rồi 32B** (32B bf16 vừa 96 GB, 72B không vừa), mỗi lần 200 mẫu rồi đọc 30 câu, dừng ở model nhỏ nhất cho câu chấp nhận được. **Model viết câu không phải model nộp bài**: bài nộp vẫn là Qwen3-4B + adapter. Model này chỉ tạo dữ liệu, không nằm trong bài nộp nên giới hạn 5B/6B không áp dụng. Cách lấy mà vẫn giữ Internet Off: trong notebook, Add Input > Models, chọn biến thể Qwen3 tương ứng trong Kaggle Models; không tải từ Hugging Face trong phiên. Không đưa dữ liệu cuộc thi lên Kaggle Model công khai. Nếu Kaggle không có sẵn, báo lại để tìm cách khác.
 Bước thử (chỉ 200 mẫu, khoảng 15 đến 20 phút kể cả nạp model):
 ```bash
 python -I -X utf8 scripts/gen_calls.py --n 200
 python -I -X utf8 scripts/gen_text.py --model <thư mục model 8B, 14B hoặc 32B> --inp data/processed/callgen_pending.jsonl        --out data/processed/callgen_text.jsonl --batch 32
 ```
+Qwen3.5-9B là model đa phương thức, chưa thử nạp: `gen_text.py` tự thử `AutoModelForImageTextToText` nếu nạp thường lỗi; nếu vẫn lỗi hoặc mẫu chat không nhận `enable_thinking`, bỏ qua và báo lỗi nguyên văn. Bước kiểm tra khứ hồi `verify_callgen.py` dùng `AutoModelForCausalLM`, nên dùng Qwen3-8B (hoặc 14B) cho bước đó, không dùng Qwen3.5.
 Gửi lại **30 dòng ngẫu nhiên** của `callgen_text.jsonl` (trường `audio_text` và `label.tool_calls`) để duyệt chất lượng câu **trước khi** sinh số lượng lớn hoặc train. Không train A5 khi chưa có duyệt.
 
 ## Bước 2. A4: đo "app lạ" (ưu tiên số 1, hạn đề xuất **10/11**)

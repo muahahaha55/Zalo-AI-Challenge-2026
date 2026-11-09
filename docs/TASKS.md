@@ -82,7 +82,7 @@ Dữ liệu này có nhãn đúng ngay từ khi dựng. Các bước:
    - ngày được dời theo `current_time` của môi trường mới;
    - giá trị enum có thể được đổi.
 3. Mọi call phải qua `validate` và `call`. Chỉ cần một call bị từ chối là bỏ cả mẫu.
-4. Câu nói do **model chạy trên máy** viết. Thử Qwen3-8B trước, rồi 14B, rồi 32B (32B bf16 vừa card 96 GB) và dừng ở model nhỏ nhất cho câu chấp nhận được (chưa đo ngưỡng; 1,7B không dùng được). Model này chỉ tạo dữ liệu nên giới hạn 5B/6B của bài nộp không áp dụng. Thêm vào notebook dưới dạng Kaggle Model hoặc dataset **Private**. Không gửi dữ liệu sang bất kỳ API bên ngoài nào. Prompt đưa 3 câu thật của **app khác** làm mẫu cách nói.
+4. Câu nói do **model chạy trên máy** viết. Thử Qwen3-8B và Qwen3.5-9B (song song), rồi 14B, rồi 32B (32B bf16 vừa card 96 GB) và dừng ở model nhỏ nhất cho câu chấp nhận được (chưa đo ngưỡng; 1,7B không dùng được). Model này chỉ tạo dữ liệu nên giới hạn 5B/6B của bài nộp không áp dụng. Thêm vào notebook dưới dạng Kaggle Model hoặc dataset **Private**. Không gửi dữ liệu sang bất kỳ API bên ngoài nào. Prompt đưa 3 câu thật của **app khác** làm mẫu cách nói.
 5. Lọc qua 3 lớp:
    - luật đơn giản: bỏ câu lộ ID hoặc tên tool, câu kể theo ngôi thứ ba, câu thiếu nội dung chữ của tham số, câu quá ngắn hoặc quá dài;
    - chính model viết tự trả lời CÓ/KHÔNG;

@@ -17,6 +17,18 @@ from lifemate.callgen import clean_text, is_yes, verify_prompt  # noqa: E402
 from lifemate.jsonl import read_jsonl  # noqa: E402
 
 
+def load_model(path: str, torch):
+    """Text-only causal LM first (Qwen3 and most models). Newer multimodal checkpoints (e.g. Qwen3.5) may not load that way:
+    fall back to the image-text-to-text auto class, which still generates text from a text-only prompt."""
+    from transformers import AutoModelForCausalLM
+    try:
+        return AutoModelForCausalLM.from_pretrained(path, dtype=torch.bfloat16, device_map="cuda")
+    except (ValueError, KeyError, OSError) as first:
+        print(f"AutoModelForCausalLM failed ({type(first).__name__}: {str(first)[:120]}); trying AutoModelForImageTextToText", flush=True)
+        from transformers import AutoModelForImageTextToText
+        return AutoModelForImageTextToText.from_pretrained(path, dtype=torch.bfloat16, device_map="cuda")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True, help="local folder of an instruction model (Qwen3-14B or similar)")
@@ -30,11 +42,11 @@ def main():
     a = ap.parse_args()
 
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+    from transformers import AutoTokenizer, set_seed
     set_seed(a.seed)
     tok = AutoTokenizer.from_pretrained(a.model)
     tok.padding_side = "left"
-    model = AutoModelForCausalLM.from_pretrained(a.model, dtype=torch.bfloat16, device_map="cuda").eval()
+    model = load_model(a.model, torch).eval()
 
     def complete(prompts: list[str], sample: bool, max_new: int) -> list[str]:
         chats = [tok.apply_chat_template([{"role": "user", "content": p}], tokenize=False, add_generation_prompt=True,
