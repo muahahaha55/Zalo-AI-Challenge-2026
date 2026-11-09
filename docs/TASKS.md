@@ -111,7 +111,17 @@ Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--d
 - **Người viết câu không thấy mục id trỏ tới:** kết quả bị cắt 400 ký tự nên mục được chọn có thể nằm ngoài phần được cắt.
 - Ngoài ra: chữ Hán lọt qua lọc (đã sửa ở `dfdde56`), có câu thêm việc không có trong call (ví dụ thêm "nhắc xem lại kết quả chuyển khoản") hoặc sai số tiền.
 Bản sửa (commit sau `dfdde56`): id chỉ được đổi sang bản ghi **cùng loại** (`type`/`kind`/`category`), cùng một id gốc luôn ra cùng một id mới trong một mẫu, hai id gốc khác nhau không bị gộp, và mỗi mẫu mang thêm `refs` (mục mà từng id trỏ tới) để người viết và bước tự chấm đọc được. Kiểm tra local: 2000 mẫu, phát lại và oracle khớp 2000/2000, **0/459** call `smart_home` sai loại.
-**Việc cần làm:** chạy lại đúng bước thử với mã mới (`gen_calls.py --n 200` rồi `gen_text.py` cho 8B và 9B) và gửi lại 30 dòng. Các tỉ lệ giữ 74% và 85,5% của lần thử đầu **không dùng được nữa** vì tính trên dữ liệu có nhãn sai.
+**Việc cần làm:** làm lại bước thử 200 mẫu với mã mới. Các tỉ lệ giữ 74% và 85,5% của lần thử đầu **không dùng được nữa** vì tính trên dữ liệu có nhãn sai.
+**Các bước làm lại (khoảng 1 giờ GPU cho cả hai model):**
+1. Kéo `main` mới nhất (từ commit `620b3f7`), dựng lại dataset mã, gắn vào notebook.
+2. Sinh call, ưu tiên chuỗi dài vì chuỗi dài bị lọc nhiều nhất:
+   `python -I -X utf8 scripts/gen_calls.py --n 200 --weights 1:0.3,2:0.4,3:0.3`
+3. Viết câu bằng từng model (Qwen3-8B và Qwen3.5-9B) với `gen_text.py`, như lần trước, ra hai tệp riêng.
+4. **Mới: kiểm tra khứ hồi cho từng tệp**, dùng adapter `q4b_lora` làm người kiểm tra (nó biết giao thức một dòng JSON mỗi lượt; model gốc chưa tinh chỉnh thường không làm được và sẽ cho 0%):
+   `python -I -X utf8 scripts/verify_callgen.py --model $QWEN --adapter checkpoints/q4b_lora --inp <tệp câu> --out <tệp kiểm> --check-all --control data/processed/dev_ids.txt --control-n 100`
+   Lệnh in 3 số cần gửi: **CONTROL** (tỉ lệ đạt trên 100 mẫu thật, là mức trần, kỳ vọng khoảng 60 đến 70%), tỉ lệ đạt của mẫu **qua** bộ lọc rẻ, và tỉ lệ đạt của mẫu **bị loại** bởi bộ lọc rẻ. Nếu hai tỉ lệ sau gần nhau thì bộ lọc rẻ chưa mang thông tin gì.
+5. Gửi: bản tổng hợp như lần trước, ba số ở bước 4 cho mỗi model, và **30 dòng ngẫu nhiên** mới (cùng 30 id cho hai model, kèm `verified`, `text_ok`, `agent_ok`). Chưa train.
+Cách đọc: tỉ lệ đạt của mẫu sinh ra so với CONTROL cho biết câu sinh ra nhất quán với nhãn đến đâu. Mẫu không đạt có thể là câu xấu hoặc mẫu khó (khó thì lại có ích cho train), nên đây là thước đo, không phải bộ lọc cuối.
 
 ### A4b. Tham chiếu "app đã thấy" cho A4 (khoảng 10 phút GPU; làm trước A5)
 **Kết quả (09/11):** khoảng cách đã thấy − lạ của `q4b_holdout` là +20,9 (chỉ exec+ask, [+10,6; +31,4]), trên ngưỡng 15 nên **làm A5** (bước thử 200 mẫu trước, chưa train). Xem `docs/BAN_GIAO_A4b.md`.

@@ -39,6 +39,17 @@ Nếu tiện, chạy thêm `q4b_holdout_hist` trên cùng tệp. Gửi lại: đ
 
 > **Cập nhật 09/11 (sau khi duyệt 30 dòng của lần thử đầu):** bộ sinh call có lỗi (id sai loại, id không nhất quán), đã sửa. **Làm lại bước thử 200 mẫu với mã mới** (kéo `main` mới nhất, dựng lại dataset mã), rồi gửi lại 30 dòng. Số liệu lần thử đầu bỏ. Chi tiết trong `docs/TASKS.md` (mục "A5, kết quả duyệt lần thử đầu").
 
+**Các bước làm lại (khoảng 1 giờ GPU cho cả hai model):**
+1. Kéo `main` mới nhất (từ commit `620b3f7`), dựng lại dataset mã, gắn vào notebook.
+2. Sinh call, ưu tiên chuỗi dài vì chuỗi dài bị lọc nhiều nhất:
+   `python -I -X utf8 scripts/gen_calls.py --n 200 --weights 1:0.3,2:0.4,3:0.3`
+3. Viết câu bằng từng model (Qwen3-8B và Qwen3.5-9B) với `gen_text.py`, như lần trước, ra hai tệp riêng.
+4. **Mới: kiểm tra khứ hồi cho từng tệp**, dùng adapter `q4b_lora` làm người kiểm tra (nó biết giao thức một dòng JSON mỗi lượt; model gốc chưa tinh chỉnh thường không làm được và sẽ cho 0%):
+   `python -I -X utf8 scripts/verify_callgen.py --model $QWEN --adapter checkpoints/q4b_lora --inp <tệp câu> --out <tệp kiểm> --check-all --control data/processed/dev_ids.txt --control-n 100`
+   Lệnh in 3 số cần gửi: **CONTROL** (tỉ lệ đạt trên 100 mẫu thật, là mức trần, kỳ vọng khoảng 60 đến 70%), tỉ lệ đạt của mẫu **qua** bộ lọc rẻ, và tỉ lệ đạt của mẫu **bị loại** bởi bộ lọc rẻ. Nếu hai tỉ lệ sau gần nhau thì bộ lọc rẻ chưa mang thông tin gì.
+5. Gửi: bản tổng hợp như lần trước, ba số ở bước 4 cho mỗi model, và **30 dòng ngẫu nhiên** mới (cùng 30 id cho hai model, kèm `verified`, `text_ok`, `agent_ok`). Chưa train.
+Cách đọc: tỉ lệ đạt của mẫu sinh ra so với CONTROL cho biết câu sinh ra nhất quán với nhãn đến đâu. Mẫu không đạt có thể là câu xấu hoặc mẫu khó (khó thì lại có ích cho train), nên đây là thước đo, không phải bộ lọc cuối.
+
 ### A5: chỉ làm sau khi biết kết quả A4b
 Cần một model lớn hơn 1,7B cho bước viết câu (1,7B đã thử và viết sai gần hết; mức đủ tốt chưa đo). **Thử theo thứ tự rẻ đến đắt: Qwen3-8B và Qwen3.5-9B (thử song song, mỗi cái 200 mẫu), rồi 14B, rồi 32B** (32B bf16 vừa 96 GB, 72B không vừa), mỗi lần 200 mẫu rồi đọc 30 câu, dừng ở model nhỏ nhất cho câu chấp nhận được. **Model viết câu không phải model nộp bài**: bài nộp vẫn là Qwen3-4B + adapter. Model này chỉ tạo dữ liệu, không nằm trong bài nộp nên giới hạn 5B/6B không áp dụng. Cách lấy mà vẫn giữ Internet Off: trong notebook, Add Input > Models, chọn biến thể Qwen3 tương ứng trong Kaggle Models; không tải từ Hugging Face trong phiên. Không đưa dữ liệu cuộc thi lên Kaggle Model công khai. Nếu Kaggle không có sẵn, báo lại để tìm cách khác.
 Bước thử (chỉ 200 mẫu, khoảng 15 đến 20 phút kể cả nạp model):
