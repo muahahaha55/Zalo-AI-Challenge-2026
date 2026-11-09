@@ -21,6 +21,8 @@ import unicodedata
 from collections.abc import Callable
 from datetime import date, timedelta
 
+from .rules import fix_args
+
 ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 ENUM_SWAP_PROB = 0.3
 SEGMENT_COUNT_WEIGHTS = {1: 0.45, 2: 0.4, 3: 0.15}
@@ -343,6 +345,9 @@ def text_ok(text: str, sample: dict, cat: dict) -> tuple[bool, str]:
     name = sample["context"].get("user_profile", {}).get("name", "")
     if name and name.lower() in text.lower():
         return False, "third_person"
+    for c in sample["label"]["tool_calls"]:           # the text states a time/phone that the label does not carry (rules.py re-derives it)
+        if fix_args(c["name"], c["arguments"], text, sample["context"]["current_time"])[1]:
+            return False, "time_conflict"
     words = set(_words(text))
     for value in free_text_args(sample, cat):
         need = _words(value)

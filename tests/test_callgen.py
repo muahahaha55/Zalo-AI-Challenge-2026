@@ -155,3 +155,13 @@ def test_ids_keep_their_kind_and_stay_consistent_inside_a_sample():
     assert refs[picked[0]]["type"] == "light"
     sample = {"label": {"tool_calls": out[0], "tool_results": out[1]}, "refs": refs, "context": {"current_time": "2026-11-01T08:00:00+07:00"}}
     assert picked[0] in cg.verify_prompt(sample, "bật đèn lên") and "tương ứng với" in cg.describe(sample, [])
+
+
+def test_time_stated_in_the_text_must_match_the_label():
+    cat = {**CAT, "alarm.create": {"name": "alarm.create", "kind": "write", "parameters": {"properties": {"time": {"type": "string"}}}}}
+    s = item("a", ["e1"], "2026-11-01", None)
+    s["label"]["tool_calls"] = [{"name": "alarm.create", "arguments": {"time": "2026-11-02T05:00:00+07:00"}}]
+    s["label"]["tool_results"] = [{"ok": True}]
+    assert cg.text_ok("hẹn chuông năm giờ sáng mai cho cậu bạn của tôi nhé", s, cat) == (True, "ok")
+    assert cg.text_ok("hẹn chuông sáu giờ sáng mai cho cậu bạn của tôi nhé", s, cat)[1] == "time_conflict"
+    assert cg.text_ok("hẹn chuông năm giờ sáng ngày kia cho cậu bạn của tôi nhé", s, cat)[1] == "time_conflict"
