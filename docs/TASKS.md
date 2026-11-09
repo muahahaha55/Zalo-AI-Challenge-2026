@@ -9,7 +9,7 @@
 3. **Muốn chọn epoch thì đặt `SAVE_STEPS` bằng số bước mỗi epoch** (ví dụ khoảng 650 cho lượt có 10.404 bước mỗi epoch) cùng `SAVE_LIMIT` đủ lớn (6 trở lên). Mỗi checkpoint khoảng 1,5 GB và output Kaggle giới hạn 20 GB (lượt A1 đã dùng khoảng 14 GB), nên xóa các checkpoint cũ trước.
 4. **`pip freeze` đã nhận (08/11, `docs/env/kaggle_freeze_2026-11-08.txt`)** và Docker đã ghim theo đó (transformers 5.20.2, peft 0.21.2, accelerate 1.15.0). **Còn thiếu bản torch CUDA:** file lấy trong phiên chỉ có CPU (`torch 2.11.0+cpu`). Trong phiên **có GPU**, chạy `python -c "import torch,sys;print(torch.__version__, torch.version.cuda, sys.version)"` và gửi dòng in ra.
 5. **Mã trên Kaggle phải là bản mới nhất** (từ commit `783526d` trở đi): thành viên chạy GPU tự đóng gói và tải lên (`bash scripts/kaggle_pack.sh code`, rồi New Version của dataset mã, giữ **Private**) và gắn phiên bản mới vào notebook trước khi chạy A4, A5, A6. Thiếu bước này thì ``callgen` và các sửa pipeline không có.
-6. **Thứ tự và hạn:** A4 (hạn 10/11) trước, rồi A5 chỉ khi A4 cho thấy app lạ là vấn đề. **A6 (ASRX) đã rút lại**, xem cuối mục A. Nếu đến 10/11 A4 chưa chạy được thì bỏ A4 và A5. Hướng dẫn chạy từng bước gửi riêng.
+6. **Thứ tự và hạn:** A4 (hạn 10/11) trước, rồi **A4b** (10 phút) rồi A5 chỉ khi A4b cho thấy khoảng cách app lạ so với app đã thấy đủ lớn. **A6 (ASRX) đã rút lại**, xem cuối mục A. Nếu đến 10/11 A4 chưa chạy được thì bỏ A4 và A5. Hướng dẫn chạy từng bước gửi riêng.
 
 ## A. Việc cho bạn có GPU (Kaggle)
 
@@ -103,6 +103,15 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
        --hist-max 300 --callgen data/processed/callgen_checked.jsonl   # thêm holdout/sft_train_cg.jsonl, đã bỏ mẫu dùng app bị giấu
 ```
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
+
+### A4b. Tham chiếu "app đã thấy" cho A4 (khoảng 10 phút GPU; làm trước A5)
+A4 cho 41,93 trên 174 mẫu dùng app bị giấu, nhưng chưa biết model đó đạt bao nhiêu trên app **đã thấy**, nên chưa biết app lạ làm mất bao nhiêu điểm. Con số "mất khoảng 24 điểm" hiện lấy từ `q4b_lora` trên dev (66,82), khác tập mẫu, khác dữ liệu train, khác loại ASR trong train: không so được.
+Cách đo đúng: chạy chính `q4b_holdout` (adapter còn trong output notebook A4) trên `data/processed/holdout/dev_ids.txt` (132 mẫu dev dùng app đã thấy, không nằm trong train của bộ chia này), chữ sạch, luật bật như A4:
+```bash
+bash scripts/infer_multi_gpu.sh train outputs/seen_q4b_holdout.jsonl --ids data/processed/holdout/dev_ids.txt      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout --text clean
+python -I -X utf8 scripts/eval.py --sub outputs/seen_q4b_holdout.jsonl --ids data/processed/holdout/dev_ids.txt
+```
+Gửi điểm (tổng, exec, ask, oos). Khoảng cách `seen − unseen` của **cùng một model** mới là số đo cho A5: nếu dưới khoảng 6 điểm thì A5 không đáng làm; nếu trên 15 điểm thì A5 đáng làm. Nếu có thể, chạy thêm `q4b_holdout_hist` trên cùng tệp để so.
 
 ### A6 (ASRX): đã rút lại (08/11)
 Ý định ban đầu: thêm các mẫu train với bản ghi của ASR gốc `phowl`, vì tưởng LLM chỉ thấy bản ghi gần sạch của `phowl_ft`. **Tiền đề sai**: `q4b_lora` và `q4b_hist` đã được train với bản ghi `phowl` (ASR gốc, WER 25%), nên dữ liệu "ASRX" trùng 1390/1390 hàng với dữ liệu đã dùng. Cộng thêm việc `aug_data` ghi lại `sft_train_asr.jsonl` bằng bản `phowl_ft`, chạy A6 chỉ thêm một bản gần sạch, không đo được điều đã dự định. Mã (`--asr-extra-tag`, cờ `ASRX`) đã gỡ. Phát hiện bởi bên chạy GPU khi đối chiếu dữ liệu.
