@@ -37,6 +37,8 @@ python -I -X utf8 scripts/eval.py --sub outputs/seen_q4b_holdout.jsonl --ids dat
 Nếu tiện, chạy thêm `q4b_holdout_hist` trên cùng tệp. Gửi lại: điểm tổng, exec, ask, oos của từng cái.
 **Cách đọc:** khoảng cách = (điểm app đã thấy) trừ (41,93 của app lạ). Dưới khoảng 6 điểm: **bỏ A5**. Trên khoảng 15 điểm: **làm A5**. Ở giữa: báo lại, ta cân nhắc theo giờ GPU còn lại.
 
+> **Cập nhật 09/11 (sau khi duyệt 30 dòng của lần thử đầu):** bộ sinh call có lỗi (id sai loại, id không nhất quán), đã sửa. **Làm lại bước thử 200 mẫu với mã mới** (kéo `main` mới nhất, dựng lại dataset mã), rồi gửi lại 30 dòng. Số liệu lần thử đầu bỏ. Chi tiết trong `docs/TASKS.md` (mục "A5, kết quả duyệt lần thử đầu").
+
 ### A5: chỉ làm sau khi biết kết quả A4b
 Cần một model lớn hơn 1,7B cho bước viết câu (1,7B đã thử và viết sai gần hết; mức đủ tốt chưa đo). **Thử theo thứ tự rẻ đến đắt: Qwen3-8B và Qwen3.5-9B (thử song song, mỗi cái 200 mẫu), rồi 14B, rồi 32B** (32B bf16 vừa 96 GB, 72B không vừa), mỗi lần 200 mẫu rồi đọc 30 câu, dừng ở model nhỏ nhất cho câu chấp nhận được. **Model viết câu không phải model nộp bài**: bài nộp vẫn là Qwen3-4B + adapter. Model này chỉ tạo dữ liệu, không nằm trong bài nộp nên giới hạn 5B/6B không áp dụng. Cách lấy mà vẫn giữ Internet Off: trong notebook, Add Input > Models, chọn biến thể Qwen3 tương ứng trong Kaggle Models; không tải từ Hugging Face trong phiên. Không đưa dữ liệu cuộc thi lên Kaggle Model công khai. Nếu Kaggle không có sẵn, báo lại để tìm cách khác.
 Bước thử (chỉ 200 mẫu, khoảng 15 đến 20 phút kể cả nạp model):

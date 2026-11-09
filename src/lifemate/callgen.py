@@ -110,6 +110,59 @@ def values_at(path: tuple, results: list[dict]) -> list:
     return seen
 
 
+TYPE_KEYS = ("type", "kind", "category")
+
+
+def records_at(path: tuple, results: list[dict]) -> list[tuple[object, dict]]:
+    """(value, record) for every distinct value at `path`; the record is the dict that holds the field (e.g. the device
+    whose `id` it is). Latest result first."""
+    found: list[tuple[object, dict]] = []
+
+    def visit(node, depth):
+        if isinstance(node, list):
+            for v in node:
+                visit(v, depth)
+        elif isinstance(node, dict):
+            if depth == len(path) - 1:
+                if path[depth] in node and not isinstance(node[path[depth]], (dict, list)) and all(node[path[depth]] != f[0] for f in found):
+                    found.append((node[path[depth]], node))
+            elif path[depth] in node:
+                visit(node[path[depth]], depth + 1)
+
+    for res in reversed(results):
+        visit(res, 0)
+    return found
+
+
+def record_of(value, path: tuple, results: list[dict]) -> dict | None:
+    for v, rec in records_at(path, results):
+        if v == value:
+            return rec
+    return None
+
+
+def type_signature(rec: dict | None) -> tuple:
+    """What kind of thing a record is (light / fan / climate ...): an id may only be swapped for one of the same kind,
+    or a light tool would be pointed at an air conditioner."""
+    return tuple((k, rec[k]) for k in TYPE_KEYS if rec and k in rec)
+
+
+def resolve_refs(calls: list[dict], results: list[dict], cat: dict) -> dict:
+    """{id: record} for every x-ref argument of the calls, so the text writer knows what each id refers to."""
+    refs: dict = {}
+    for c in calls:
+        props = cat.get(c["name"], {}).get("parameters", {}).get("properties", {})
+        for k, v in c["arguments"].items():
+            if "x-ref" not in props.get(k, {}):
+                continue
+            for one in v if isinstance(v, list) else [v]:
+                path = find_path(one, results)
+                rec = record_of(one, path, results) if path else None
+                if rec is not None:
+                    refs[str(one)] = rec
+    return refs
+
+
 def shift_dates(value, days: int):
     """Shift every ISO date inside a string argument (also in lists) by `days`."""
     if isinstance(value, list):
@@ -132,9 +185,13 @@ def eligible(segment: list[tuple[dict, int]], base: dict) -> bool:
 
 
 def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, seen: list[dict], cat: dict,
-               rng: random.Random) -> tuple[list[dict], list[dict]] | None:
+               rng: random.Random, bound: dict | None = None) -> tuple[list[dict], list[dict]] | None:
     """Replay the segment in `env` and return (calls, results), or None when anything does not fit.
-    `seen` are the results already produced in this sample (ids may be taken from them)."""
+    `seen` are the results already produced in this sample (ids may be taken from them).
+    `bound` ({(donor id, path, donor value): new value}) keeps the binding consistent inside one sample: the same donor id
+    always becomes the same new id (so "read that chat, then write to it" stays one chat) and two different donor ids
+    never collapse into one. A new id must be a record of the same kind as the donor's (see type_signature)."""
+    bound = {} if bound is None else bound
     delta = (_day(base) - _day(donor)).days
     donor_results = donor["label"]["tool_results"]
     calls: list[dict] = []
@@ -151,10 +208,17 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
                 path = find_path(vals[0], donor_results[:idx])    # where the donor read this id (all list items share it)
                 if path is None:
                     return None
-                pool = values_at(path, seen + results)
-                if not pool or len(pool) < len(vals):
-                    return None
-                picked = rng.sample(pool, len(vals))
+                picked = []
+                for dv in vals:
+                    key = (donor["id"], path, dv)
+                    if key not in bound:
+                        want = type_signature(record_of(dv, path, donor_results[:idx]))
+                        taken = {nv for (_, pth, _), nv in bound.items() if pth == path}
+                        pool = [val for val, rec in records_at(path, seen + results) if type_signature(rec) == want and val not in taken]
+                        if not pool:
+                            return None
+                        bound[key] = rng.choice(pool)
+                    picked.append(bound[key])
                 args[k] = picked if isinstance(v, list) else picked[0]
                 continue
             if "enum" in p and rng.random() < ENUM_SWAP_PROB:
@@ -191,6 +255,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
         calls: list[dict] = []
         results: list[dict] = []
         used: list[str] = []
+        bound: dict = {}
         for _ in range(want):
             donor = rng.choice(donors)
             apps_so_far = {app_of(c["name"]) for c in calls}           # one sub-request per app: no repeated reads
@@ -199,7 +264,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
             if not segs:
                 stats["no_segment"] += 1
                 continue
-            res = transplant(rng.choice(segs), donor, base, env, results, cat, rng)
+            res = transplant(rng.choice(segs), donor, base, env, results, cat, rng, bound)
             if res is None:
                 stats["rejected"] += 1
                 break
@@ -215,7 +280,8 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
                 continue
             seen_keys.add(key)
             out.append({"id": f"{base['id']}#cg{len(out):05d}", "context": base["context"], "history": [],
-                        "label": {"tool_calls": calls, "tool_results": results}, "base": base["id"], "donors": used})
+                        "label": {"tool_calls": calls, "tool_results": results}, "base": base["id"], "donors": used,
+                        "refs": resolve_refs(calls, results, cat)})
     return out, stats
 
 
@@ -320,7 +386,7 @@ def verify_prompt(sample: dict, text: str) -> str:
     ops = "\n".join(f"- {json.dumps(c, ensure_ascii=False)}" for c in sample["label"]["tool_calls"])
     return (
         f"Người dùng nói với trợ lý: \"{text}\"\n"
-        f"Trợ lý thực hiện các thao tác:\n{ops}\n"
+        f"Trợ lý thực hiện các thao tác:\n{ops}\n{_refs_block(sample)}"
         "Câu nói có yêu cầu ĐÚNG và ĐỦ các thao tác này (các thao tác đọc/tra cứu để lấy thông tin là được phép), "
         "và KHÔNG yêu cầu thêm việc nào khác không? Trả lời đúng một từ: CÓ hoặc KHÔNG."
     )
@@ -328,6 +394,15 @@ def verify_prompt(sample: dict, text: str) -> str:
 
 def is_yes(answer: str) -> bool:
     return clean_text(answer).upper().startswith("CÓ")
+
+
+def _refs_block(sample: dict, limit: int = 240) -> str:
+    """What each id used by the calls refers to (the results are cut short, so the chosen item could be missing)."""
+    refs = sample.get("refs") or {}
+    if not refs:
+        return ""
+    lines = [f"- {k} là: {json.dumps(v, ensure_ascii=False)[:limit]}" for k, v in refs.items()]
+    return "Các mã ID trong thao tác tương ứng với:\n" + "\n".join(lines) + "\n"
 
 
 def describe(sample: dict, examples: list[tuple[str, list[dict]]], limit: int = 400) -> str:
@@ -340,7 +415,7 @@ def describe(sample: dict, examples: list[tuple[str, list[dict]]], limit: int = 
         "Bạn viết câu mà NGƯỜI DÙNG nói trực tiếp với trợ lý giọng nói trên điện thoại (ngôi thứ nhất, câu ra lệnh hoặc nhờ vả).\n"
         f"Bây giờ là {sample['context']['current_time']}.\n"
         "Ví dụ câu nói thật của người dùng (chỉ để học CÁCH NÓI; nội dung của chúng không liên quan, đừng chép):\n" + shots + "\n"
-        "Lần này trợ lý cần thực hiện đúng các thao tác sau (kèm kết quả trả về):\n" + "\n".join(lines) + "\n"
+        "Lần này trợ lý cần thực hiện đúng các thao tác sau (kèm kết quả trả về):\n" + "\n".join(lines) + "\n" + _refs_block(sample) +
         "Viết một câu nói (có thể hai vế) dẫn tới ĐÚNG các thao tác ghi trên, không thêm việc khác. Nói tự nhiên, ngắn gọn, "
         "đời thường như các ví dụ; gọi người, đồ vật, sự kiện bằng tên trong kết quả, không bao giờ đọc mã ID, tên tool hay tên "
         "tham số; không xưng tên người dùng, không kể lại theo ngôi thứ ba. Chỉ in ra câu nói."

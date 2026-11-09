@@ -124,3 +124,34 @@ def test_generate_honours_segment_count_weights():
     env = lambda i: FakeEnv(["e1", "e2"] if i == "a" else ["f1"])  # noqa: E731
     only_one, _ = cg.generate(items, CAT, env, random.Random(3), 6, weights={1: 1.0})
     assert only_one and all(len({c["name"].split(".")[0] for c in s["label"]["tool_calls"]}) == 1 for s in only_one)
+
+
+def test_ids_keep_their_kind_and_stay_consistent_inside_a_sample():
+    class Env:
+        def validate(self, name, args):
+            return {"ok": True}
+
+        def call(self, name, args):
+            if name == "dev.list":
+                return {"ok": True, "devices": [{"id": "light_a", "type": "light"}, {"id": "ac_1", "type": "climate"},
+                                                {"id": "light_b", "type": "light"}]}
+            return {"ok": True}
+
+    cat = {"dev.list": {"name": "dev.list", "kind": "read", "parameters": {"properties": {}}},
+           "dev.light": {"name": "dev.light", "kind": "write", "parameters": {"properties": {"device_id": {"x-ref": "dev.devices"}}}},
+           "dev.note": {"name": "dev.note", "kind": "write", "parameters": {"properties": {"device_id": {"x-ref": "dev.devices"}}}}}
+    donor = {"id": "d", "context": {"current_time": "2026-11-01T08:00:00+07:00", "installed_apps": {"dev": {"tools": list(cat)}}},
+             "history": [], "label": {
+                 "tool_calls": [{"name": "dev.list", "arguments": {}}, {"name": "dev.light", "arguments": {"device_id": "light_a"}},
+                                {"name": "dev.note", "arguments": {"device_id": "light_a"}}],
+                 "tool_results": [{"ok": True, "devices": [{"id": "light_a", "type": "light"}, {"id": "ac_9", "type": "climate"}]},
+                                  {"ok": True}, {"ok": True}]}}
+    for seed in range(20):
+        out = cg.transplant(cg.segments(donor, cat)[0], donor, donor, Env(), [], cat, random.Random(seed))
+        assert out is not None
+        picked = [c["arguments"]["device_id"] for c in out[0] if "device_id" in c["arguments"]]
+        assert picked[0] == picked[1] and picked[0] in ("light_a", "light_b")       # same kind, and the same device twice
+    refs = cg.resolve_refs(out[0], out[1], cat)
+    assert refs[picked[0]]["type"] == "light"
+    sample = {"label": {"tool_calls": out[0], "tool_results": out[1]}, "refs": refs, "context": {"current_time": "2026-11-01T08:00:00+07:00"}}
+    assert picked[0] in cg.verify_prompt(sample, "bật đèn lên") and "tương ứng với" in cg.describe(sample, [])

@@ -104,6 +104,15 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
 ```
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
 
+### A5, kết quả duyệt lần thử đầu (09/11) và bản sửa: LÀM LẠI bước thử 200 mẫu
+Đọc 30 dòng của 9B (8B tương tự) cho thấy **lỗi nằm ở bộ sinh call, không phải ở model viết câu**:
+- **Id lấy ngẫu nhiên không xét loại:** trong 49 call `smart_home` của lần thử, **29 call (59%) có `device_id` sai loại** (`light_set` trỏ vào điều hòa `ac_bedroom`, `climate_set` trỏ vào đèn). Nhãn "hợp lệ" với môi trường nhưng vô nghĩa, và model viết câu không thể mô tả đúng ("tắt đèn phòng ngủ nhỏ" nhưng nhãn là điều hòa).
+- **Id không nhất quán trong mẫu:** "xem tin nhắn với Lan rồi gửi vào đó" nhưng `read_chat` và `send_message` dùng hai `chat_id` khác nhau.
+- **Người viết câu không thấy mục id trỏ tới:** kết quả bị cắt 400 ký tự nên mục được chọn có thể nằm ngoài phần được cắt.
+- Ngoài ra: chữ Hán lọt qua lọc (đã sửa ở `dfdde56`), có câu thêm việc không có trong call (ví dụ thêm "nhắc xem lại kết quả chuyển khoản") hoặc sai số tiền.
+Bản sửa (commit sau `dfdde56`): id chỉ được đổi sang bản ghi **cùng loại** (`type`/`kind`/`category`), cùng một id gốc luôn ra cùng một id mới trong một mẫu, hai id gốc khác nhau không bị gộp, và mỗi mẫu mang thêm `refs` (mục mà từng id trỏ tới) để người viết và bước tự chấm đọc được. Kiểm tra local: 2000 mẫu, phát lại và oracle khớp 2000/2000, **0/459** call `smart_home` sai loại.
+**Việc cần làm:** chạy lại đúng bước thử với mã mới (`gen_calls.py --n 200` rồi `gen_text.py` cho 8B và 9B) và gửi lại 30 dòng. Các tỉ lệ giữ 74% và 85,5% của lần thử đầu **không dùng được nữa** vì tính trên dữ liệu có nhãn sai.
+
 ### A4b. Tham chiếu "app đã thấy" cho A4 (khoảng 10 phút GPU; làm trước A5)
 **Kết quả (09/11):** khoảng cách đã thấy − lạ của `q4b_holdout` là +20,9 (chỉ exec+ask, [+10,6; +31,4]), trên ngưỡng 15 nên **làm A5** (bước thử 200 mẫu trước, chưa train). Xem `docs/BAN_GIAO_A4b.md`.
 A4 cho 41,93 trên 174 mẫu dùng app bị giấu, nhưng chưa biết model đó đạt bao nhiêu trên app **đã thấy**, nên chưa biết app lạ làm mất bao nhiêu điểm. Con số "mất khoảng 24 điểm" hiện lấy từ `q4b_lora` trên dev (66,82), khác tập mẫu, khác dữ liệu train, khác loại ASR trong train: không so được.
