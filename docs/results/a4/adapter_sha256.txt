@@ -1,0 +1,2 @@
+3fb678f340662f002a6bb4d42c28f91848a6d631839c1d9ff5b900bf33199a0a  checkpoints/q4b_holdout/adapter_model.safetensors
+d425d17c31ce87e87515b2356ba6402c1943de4919b20cd89b57b2569c8b0910  checkpoints/q4b_holdout_hist/adapter_model.safetensors

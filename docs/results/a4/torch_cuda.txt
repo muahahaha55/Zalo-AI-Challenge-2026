@@ -1,0 +1,2 @@
+2.11.0+cu130 13.0 3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]
+peft 0.21.2 | transformers 5.20.2 | gpus 1 NVIDIA RTX PRO 6000 Blackwell Server Edition

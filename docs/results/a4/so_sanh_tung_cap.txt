@@ -1,0 +1,13 @@
+################ q4b_holdout -> q4b_holdout_hist (từng cặp mẫu)
+N=174   q4b_holdout: 41.93   q4b_holdout_hist: 43.37
+paired diff (q4b_holdout_hist-q4b_holdout): +1.44 pts   95% bootstrap interval [-4.69, +7.60]   -> NOT distinguishable from 0
+samples better 28, worse 22, equal 124
+  exec  n=153  diff  +2.08   better 22  worse 18
+  ask   n= 21  diff  -3.17   better 6  worse 4
+largest changes: train_0520(+100), train_0698(-100), train_0757(+100), train_0889(+100), train_0950(-100), train_0979(+100), train_1024(+100), train_1105(-100)
+
+################ Từ chối nhầm trên app lạ
+174 mẫu: 174 có call, 0 ngoài phạm vi (oos)
+file                                           từ chối nhầm   oos đúng  dự đoán ask  call TB
+unseen_q4b_holdout.jsonl                           1/174        0/0              27     2.24
+unseen_q4b_holdout_hist.jsonl                      1/174        0/0              16     2.28
