@@ -104,6 +104,21 @@ python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_
 ```
 Train như A4 nhưng thêm `data/processed/holdout/sft_train_cg.jsonl` vào `--data` (đặt tên `q4b_holdout_cg`), rồi so với `q4b_holdout` trên `holdout/eval_ids.txt` bằng `scripts/compare_runs.py`. Chỉ dùng cho bản nộp nếu điểm trên app lạ tăng rõ. Với bộ chia A4, nhiều mẫu bị bỏ vì mẫu gốc nằm ngoài phần train của bộ chia đó (ở thử nghiệm local là 183/300), nên cần sinh dư (`--n 6000`).
 
+### A7. Chạy toàn bộ giải pháp với trọng số THẬT (không phụ thuộc A5; làm trước 15/11)
+Mục đích: biết giải pháp cuối chạy đúng ở dạng nộp (ASR sống cộng LLM, offline, ghi `result/`), mẫu chậm nhất dưới 30 giây, kết quả tất định, và hash phát lại khớp. Hiện mới thử bằng model nhỏ. Công cụ: `scripts/verify_image.py` (chạy N lần, so byte, đo thời gian, gọi `verify_submission.py`, so với bài nộp tham chiếu, ghi `report.json`).
+**A7a: trên Kaggle (RTX PRO 6000, không có Docker; chạy cùng đường mã `run_container.py`)**:
+```bash
+python -I -X utf8 scripts/verify_image.py --no-docker --data-root data/raw/train+public_test --split public_test --runs 3     --out-dir check_a7a --ref outputs/sub_public_v1.jsonl -- --llm $QWEN --adapter checkpoints/q4b_lora --asr checkpoints/phowl_ft/merged
+```
+Gửi `check_a7a/report.json` (không chứa nội dung dữ liệu). Kỳ vọng: 634/634 hash khớp, ba lần trùng từng byte, và **trùng 634/634 dòng với `sub_public_v1.jsonl`** (nếu lệch thì ghi số dòng lệch: do ASR sống trong lần này thay vì bản chép sẵn, hoặc do luật; báo lại để phân tích).
+**A7b: trên máy có Docker và GPU 24 GB (RTX 4090 hoặc 3090)**: xem `docs/DOCKER.md` mục "Kiểm tra image thật". Lệnh chính:
+```bash
+python -I -X utf8 scripts/check_models.py --models models        # trước khi dựng
+docker build -f docker/Dockerfile -t lifemate .
+python -I -X utf8 scripts/verify_image.py --image lifemate --data-root <thư mục chứa public_test> --runs 3 --out-dir check_a7b --ref sub_public_v1.jsonl
+```
+Làm A7b trên 4090 rồi, nếu có thể, trên 3090 (cùng đời Ampere với A30 máy chấm); so `report.json` của hai máy và số dòng lệch nhau.
+
 ### A5, kết quả duyệt lần thử đầu (09/11) và bản sửa: LÀM LẠI bước thử 200 mẫu
 Đọc 30 dòng của 9B (8B tương tự) cho thấy **lỗi nằm ở bộ sinh call, không phải ở model viết câu**:
 - **Id lấy ngẫu nhiên không xét loại:** trong 49 call `smart_home` của lần thử, **29 call (59%) có `device_id` sai loại** (`light_set` trỏ vào điều hòa `ac_bedroom`, `climate_set` trỏ vào đèn). Nhãn "hợp lệ" với môi trường nhưng vô nghĩa, và model viết câu không thể mô tả đúng ("tắt đèn phòng ngủ nhỏ" nhưng nhãn là điều hòa).

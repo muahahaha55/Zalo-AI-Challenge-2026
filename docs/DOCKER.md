@@ -53,3 +53,13 @@ Tham số của container (`--llm`, `--adapter`, `--asr`, `--time-budget`, `--no
 - [ ] `scripts/check_compliance.py` đạt.
 - [ ] Lưu bản ghi nguồn gốc của lần chạy kiểm tra cuối: thêm `--manifest /app/result/run_manifest.json` (hoặc biến `LIFEMATE_MANIFEST`) khi **tự kiểm tra**; file ghi commit, phiên bản thư viện, sha256 trọng số, file đầu vào, sha256 kết quả và thời gian. Mặc định **tắt** trong container nộp, vì BTC thu thư mục `result/` và việc băm trọng số mất khoảng một phút. `scripts/run_infer.py` ghi `<out>.manifest.json` mặc định (`--manifest none` để tắt).
 - [ ] Đối chiếu với tài liệu chính thức của BTC khi nhận được.
+
+## Kiểm tra image thật (máy có Docker và GPU 24 GB, ví dụ RTX 4090 hoặc 3090)
+Chưa từng chạy với trọng số thật; làm trước 15/11 (task A7b trong `docs/TASKS.md`).
+1. **Điều kiện máy:** Docker với hỗ trợ GPU (Linux: `nvidia-container-toolkit`; Windows: Docker Desktop với WSL2), driver NVIDIA từ khoảng 525 trở lên (image dùng CUDA 12.6), khoảng 40 GB đĩa trống, Internet khi **dựng** (không cần khi chạy).
+2. **Lấy mã:** `git clone https://github.com/muahahaha55/Zalo-AI-Challenge-2026.git` (bản sạch; dữ liệu cuộc thi để ở thư mục riêng, **không** nằm trong repo).
+3. **Ráp `models/` trong thư mục repo** (ngoài git): `models/llm` = Qwen3-4B gốc (3 file `model-0000x-of-00003.safetensors`, `config.json`, tokenizer), `models/adapter` = `adapter_model.safetensors` + `adapter_config.json` của `q4b_lora`, `models/asr` = PhoWhisper-large đã gộp (`model.safetensors`, `config.json`, tokenizer). Rồi: `python -I -X utf8 scripts/check_models.py` phải in "models OK" (so sha256 với `models.lock.json`).
+4. **Dựng:** `docker build -f docker/Dockerfile -t lifemate .` (lần đầu mất khoảng 40 phút nếu mạng chậm; kích thước khoảng 17 đến 20 GB).
+5. **Chạy kiểm tra:** `python -I -X utf8 scripts/verify_image.py --image lifemate --data-root <thư mục chứa public_test> --runs 3 --out-dir check_a7b --ref <sub_public_v1.jsonl>`. Thử nhanh trước bằng `--limit 20 --runs 2`.
+6. **Gửi lại:** `check_a7b/report.json` (GPU, driver, thời gian, tất định, số dòng lệch so với bài nộp tham chiếu). Không gửi `submission.jsonl` qua kênh công khai.
+7. **Đạt khi:** ba lần chạy trùng từng byte, `verify_submission` báo 634/634 hash khớp, mẫu chậm nhất (`max_s`) dưới 30 giây (nên dưới 15 giây để có dư địa), số dòng lệch so với bài nộp tham chiếu nhỏ và giải thích được.

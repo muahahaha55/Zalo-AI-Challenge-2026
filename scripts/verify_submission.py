@@ -16,7 +16,10 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "raw" / "train+public_test"
+sys.path.insert(0, str(ROOT / "src"))
+from lifemate.paths import data_root  # noqa: E402
+
+DATA = data_root()      # data/raw/train+public_test, or LIFEMATE_DATA_ROOT (the folder that holds the split folders)
 
 
 def main():
