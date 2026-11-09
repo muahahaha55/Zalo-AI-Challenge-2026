@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libsndfile1 && 
 # on 07/11; the CUDA build used in training is unknown (the Kaggle freeze came from a CPU session), see docs/DOCKER.md.
 WORKDIR /app
 COPY requirements-inference.txt ./
-RUN pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124 \
+RUN pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cu126 \
  && pip install --no-cache-dir -r requirements-inference.txt
 
 COPY src ./src
