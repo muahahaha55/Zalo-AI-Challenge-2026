@@ -19,7 +19,7 @@ import random
 import re
 import unicodedata
 from collections.abc import Callable
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .rules import fix_args
 
@@ -192,6 +192,17 @@ def eligible(segment: list[tuple[dict, int]], base: dict) -> bool:
     return all(c["name"] in installed for c, _ in segment)
 
 
+def moved_into_the_past(old: str, new: str, donor_now: datetime, base_now: datetime) -> bool:
+    """A time that lay ahead of the donor's `now` but lies behind the base's `now`: shifting dates by whole days keeps the
+    clock time, so "today 15:00" becomes a time that has already passed when the base sample is set later in the day."""
+    if not (isinstance(old, str) and isinstance(new, str) and ISO_DATE.match(old) and len(old) >= 16 and len(new) >= 16):
+        return False
+    try:
+        return datetime.fromisoformat(old[:19]) >= donor_now and datetime.fromisoformat(new[:19]) < base_now
+    except ValueError:
+        return False
+
+
 def soft_failure(result: dict) -> bool:
     """The environment sometimes answers ok=true for a call that did nothing ("done": false, or a message that is an error
     text such as "assignee phải là một trong [...]"). Successful sends carry a message OBJECT, so a text message means failure.
@@ -209,6 +220,8 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
     never collapse into one. A new id must be a record of the same kind as the donor's (see type_signature)."""
     bound = {} if bound is None else bound
     delta = (_day(base) - _day(donor)).days
+    donor_now = datetime.fromisoformat(donor["context"]["current_time"][:19])
+    base_now = datetime.fromisoformat(base["context"]["current_time"][:19])
     donor_results = donor["label"]["tool_results"]
     calls: list[dict] = []
     results: list[dict] = []
@@ -241,11 +254,17 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
                 args[k] = rng.choice(p["enum"])
                 continue
             args[k] = shift_dates(v, delta)
+            for old_v, new_v in zip(v if isinstance(v, list) else [v], args[k] if isinstance(args[k], list) else [args[k]], strict=False):
+                if moved_into_the_past(old_v, new_v, donor_now, base_now):
+                    return None
         if not env.validate(call["name"], args).get("ok", False):
             return None
+        before = env.get_state_hash() if cat[call["name"]].get("kind") == "write" else None
         res = env.call(call["name"], args)
         if not res.get("ok", False) or soft_failure(res):
             return None
+        if before is not None and env.get_state_hash() == before:
+            return None                  # a write that changes nothing (switch an already-on light on): real labels never do (0/891)
         calls.append({"name": call["name"], "arguments": args})
         results.append(res)
     return calls, results

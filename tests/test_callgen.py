@@ -22,6 +22,9 @@ class FakeEnv:
     def validate(self, name, args):
         return {"ok": True}
 
+    def get_state_hash(self):
+        return str(len(self.log))             # every call changes the state in this fake
+
     def call(self, name, args):
         self.log.append((name, args))
         if name == "cal.list":
@@ -128,10 +131,16 @@ def test_generate_honours_segment_count_weights():
 
 def test_ids_keep_their_kind_and_stay_consistent_inside_a_sample():
     class Env:
+        calls = 0
+
         def validate(self, name, args):
             return {"ok": True}
 
+        def get_state_hash(self):
+            return str(self.calls)
+
         def call(self, name, args):
+            self.calls += 1
             if name == "dev.list":
                 return {"ok": True, "devices": [{"id": "light_a", "type": "light"}, {"id": "ac_1", "type": "climate"},
                                                 {"id": "light_b", "type": "light"}]}
@@ -190,6 +199,9 @@ def test_calls_the_environment_silently_refused_are_dropped():
         def validate(self, name, args):
             return {"ok": True}
 
+        def get_state_hash(self):
+            return "h"
+
         def call(self, name, args):
             return {"ok": True, "done": False, "message": "không tìm thấy"}
 
@@ -206,3 +218,27 @@ def test_a_sample_never_has_fewer_segments_than_requested():
     env = lambda i: FakeEnv(["e1", "e2"] if i == "a" else ["f1"])  # noqa: E731
     out, stats = cg.generate(items, CAT, env, random.Random(4), 5, weights={3: 1.0}, max_tries_factor=5)
     assert out == [] and stats["no_segment"] > 0
+
+
+def test_times_that_end_up_in_the_past_and_writes_that_change_nothing_are_dropped():
+    from datetime import datetime
+    now_d, now_b = datetime(2026, 11, 1, 8, 0), datetime(2026, 11, 1, 18, 0)
+    assert cg.moved_into_the_past("2026-11-01T15:00:00+07:00", "2026-11-01T15:00:00+07:00", now_d, now_b)
+    assert not cg.moved_into_the_past("2026-11-01T07:00:00+07:00", "2026-11-01T07:00:00+07:00", now_d, now_b)   # was past already
+    assert not cg.moved_into_the_past("2026-11-02T15:00:00+07:00", "2026-11-02T15:00:00+07:00", now_d, now_b)   # tomorrow
+    assert not cg.moved_into_the_past("evt_1", "evt_2", now_d, now_b)
+
+    class NoopEnv:
+        def validate(self, name, args):
+            return {"ok": True}
+
+        def get_state_hash(self):
+            return "same"
+
+        def call(self, name, args):
+            return {"ok": True}
+
+    cat = {"x.set": {"name": "x.set", "kind": "write", "parameters": {"properties": {}}}}
+    donor = {"id": "d", "context": {"current_time": "2026-11-01T08:00:00+07:00", "installed_apps": {"x": {"tools": ["x.set"]}}},
+             "history": [], "label": {"tool_calls": [{"name": "x.set", "arguments": {}}], "tool_results": [{"ok": True}]}}
+    assert cg.transplant(cg.segments(donor, cat)[0], donor, donor, NoopEnv(), [], cat, random.Random(0)) is None
