@@ -26,6 +26,7 @@ from .rules import fix_args
 ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 ENUM_SWAP_PROB = 0.3
 SEGMENT_COUNT_WEIGHTS = {1: 0.45, 2: 0.4, 3: 0.15}
+DONOR_ATTEMPTS = 25
 MAX_CALLS = 7          # the agent allows 8 steps (calls + END); real train answers have at most 6 calls
 
 
@@ -272,13 +273,17 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
         used: list[str] = []
         bound: dict = {}
         for _ in range(want):
-            donor = rng.choice(donors)
             apps_so_far = {app_of(c["name"]) for c in calls}           # one sub-request per app: no repeated reads
-            segs = [s for s in segments(donor, cat) if eligible(s, base) and not {app_of(c["name"]) for c, _ in s} & apps_so_far
-                    and len(calls) + len(s) <= MAX_CALLS]
-            if not segs:
-                stats["no_segment"] += 1
-                continue
+            donor, segs = None, []
+            for _attempt in range(DONOR_ATTEMPTS):                     # look for a donor with a segment that fits THIS base
+                donor = rng.choice(donors)
+                segs = [s for s in segments(donor, cat) if eligible(s, base) and not {app_of(c["name"]) for c, _ in s} & apps_so_far
+                        and len(calls) + len(s) <= MAX_CALLS]
+                if segs:
+                    break
+            if not segs:                                               # never emit a sample with fewer segments than asked:
+                stats["no_segment"] += 1                               # the requested --weights must hold
+                break
             res = transplant(rng.choice(segs), donor, base, env, results, cat, rng, bound)
             if res is None:
                 stats["rejected"] += 1

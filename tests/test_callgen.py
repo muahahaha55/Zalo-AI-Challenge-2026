@@ -197,3 +197,12 @@ def test_calls_the_environment_silently_refused_are_dropped():
     donor = {"id": "d", "context": {"current_time": "2026-11-01T08:00:00+07:00", "installed_apps": {"x": {"tools": ["x.do"]}}},
              "history": [], "label": {"tool_calls": [{"name": "x.do", "arguments": {}}], "tool_results": [{"ok": True}]}}
     assert cg.transplant(cg.segments(donor, cat)[0], donor, donor, Env(), [], cat, random.Random(0)) is None
+
+
+def test_a_sample_never_has_fewer_segments_than_requested():
+    """Asking for 3 segments when only 1 app is available must produce nothing, not a one-segment sample (the old loop
+    skipped the missing segments, so --weights was almost ignored: 86% of the A5 retry samples had a single segment)."""
+    items = [item("a", ["e1", "e2"], "2026-11-01", None), item("b", ["f1"], "2026-11-09", None)]
+    env = lambda i: FakeEnv(["e1", "e2"] if i == "a" else ["f1"])  # noqa: E731
+    out, stats = cg.generate(items, CAT, env, random.Random(4), 5, weights={3: 1.0}, max_tries_factor=5)
+    assert out == [] and stats["no_segment"] > 0
