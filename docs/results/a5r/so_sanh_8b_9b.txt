@@ -1,0 +1,29 @@
+200 mẫu call giống hệt nhau giữa hai lượt: 200 mẫu
+
+=== 8b: lọc rẻ có mang thông tin không? (agent_ok của nhóm qua trừ nhóm bị loại)
+  qua 63/104 (60.6%)  bị loại 40/96 (41.7%)  chênh +18.9 điểm, khoảng tin cậy 95% xấp xỉ [+5.3; +32.5] (xấp xỉ chuẩn)
+  riêng bước tự chấm: CÓ -> agent_ok 68/121 (56.2%) | KHÔNG -> 35/79 (44.3%)
+  riêng luật text_ok: qua -> agent_ok 98/179 (54.7%) | bị loại -> 5/21 (23.8%)
+  agent_ok theo số call: 1c 54/85 (63.5%) | 2c 29/64 (45.3%) | 3c 12/30 (40.0%) | 4c 6/15 (40.0%) | 5c 1/2 (50.0%) | 6c 0/3 (0.0%) | 7c 1/1 (100.0%)
+  tự chấm CÓ theo số call: 1c 83/85 (97.6%) | 2c 32/64 (50.0%) | 3c 5/30 (16.7%) | 4c 1/15 (6.7%) | 5c 0/2 (0.0%) | 6c 0/3 (0.0%) | 7c 0/1 (0.0%)
+  chuỗi từ 3 call trở lên: 51 mẫu, qua lọc rẻ 5, agent_ok 20, được giữ 1
+
+=== 9b: lọc rẻ có mang thông tin không? (agent_ok của nhóm qua trừ nhóm bị loại)
+  qua 102/178 (57.3%)  bị loại 7/22 (31.8%)  chênh +25.5 điểm, khoảng tin cậy 95% xấp xỉ [+4.7; +46.3] (xấp xỉ chuẩn)
+  riêng bước tự chấm: CÓ -> agent_ok 106/192 (55.2%) | KHÔNG -> 3/8 (37.5%)
+  riêng luật text_ok: qua -> agent_ok 104/183 (56.8%) | bị loại -> 5/17 (29.4%)
+  agent_ok theo số call: 1c 53/85 (62.4%) | 2c 36/64 (56.2%) | 3c 11/30 (36.7%) | 4c 7/15 (46.7%) | 5c 1/2 (50.0%) | 6c 0/3 (0.0%) | 7c 1/1 (100.0%)
+  tự chấm CÓ theo số call: 1c 83/85 (97.6%) | 2c 61/64 (95.3%) | 3c 29/30 (96.7%) | 4c 13/15 (86.7%) | 5c 2/2 (100.0%) | 6c 3/3 (100.0%) | 7c 1/1 (100.0%)
+  chuỗi từ 3 call trở lên: 51 mẫu, qua lọc rẻ 46, agent_ok 20, được giữ 20
+
+=== so hai model trên cùng 200 mẫu call
+được giữ: 8b 63, 9b 102, cả hai 45, chỉ 8b 18, chỉ 9b 57, không cái nào 80
+agent_ok: 8b 103, 9b 109, cả hai 73, chỉ 8b 30, chỉ 9b 36, không cái nào 61
+chênh agent_ok (9b trừ 8b): +6 mẫu trên 200 (so từng cặp cùng mẫu call; 36 tốt lên, 30 tệ đi, 134 bằng)
+cùng một mẫu mà hai model viết giống hệt: 0
+quyết định tự chấm CÓ/KHÔNG trùng nhau: 123/200
+lý do text_ok loại: {'8b': {'ok': 179, 'time_conflict': 13, 'missing_args': 7, 'id_or_tool_name': 1}, '9b': {'ok': 183, 'time_conflict': 8, 'missing_args': 6, 'id_or_tool_name': 3}}
+
+=== phương án KHÔNG dùng bước tự chấm: giữ mẫu qua text_ok VÀ agent_ok (khứ hồi) -- chỉ để so, chưa phải đề xuất mã
+8b: giữ 98/200 (49.0%); theo số call {1: 49, 2: 29, 3: 12, 4: 6, 5: 1, 6: 0, 7: 1}; chuỗi từ 3 call: 20
+9b: giữ 104/200 (52.0%); theo số call {1: 49, 2: 35, 3: 11, 4: 7, 5: 1, 6: 0, 7: 1}; chuỗi từ 3 call: 20

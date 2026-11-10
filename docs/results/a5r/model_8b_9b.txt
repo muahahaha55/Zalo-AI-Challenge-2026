@@ -1,0 +1,22 @@
+== GEN_SIZE=8b
+thư mục: /kaggle/input/models/manojkumarcs28/qwen3-8b/pytorch/qwen3-8b/1/Qwen 3-8B
+config.json sha256: f7c4eadfbbf522470667b797a3c89be2524832d2d599797248dc304fff447c30
+model_type=qwen3 hidden_size=4096 num_hidden_layers=36 tổng safetensors=16.38 GB
+
+ĐỐI CHIẾU với bản gốc Hugging Face: 5/5 shard trùng sha256 (đủ, là bản gốc)
+  model-00001-of-00005.safetensors: TRÙNG bản gốc
+  model-00002-of-00005.safetensors: TRÙNG bản gốc
+  model-00003-of-00005.safetensors: TRÙNG bản gốc
+  model-00004-of-00005.safetensors: TRÙNG bản gốc
+  model-00005-of-00005.safetensors: TRÙNG bản gốc
+
+== GEN_SIZE=9b
+thư mục: /kaggle/input/models/mirzamilanfarabi/qwen3.5/transformers/9b/1
+config.json sha256: d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05
+model_type=qwen3_5 hidden_size=4096 num_hidden_layers=32 tổng safetensors=19.31 GB
+
+ĐỐI CHIẾU với bản gốc Hugging Face: 4/4 shard trùng sha256 (đủ, là bản gốc)
+  model.safetensors-00001-of-00004.safetensors: TRÙNG bản gốc
+  model.safetensors-00002-of-00004.safetensors: TRÙNG bản gốc
+  model.safetensors-00003-of-00004.safetensors: TRÙNG bản gốc
+  model.safetensors-00004-of-00004.safetensors: TRÙNG bản gốc
