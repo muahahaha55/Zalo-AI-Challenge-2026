@@ -1,5 +1,29 @@
 # Hướng dẫn chạy trên GPU (phiên 08/11): torch, A4, A5
 
+## LÀM NGAY (cập nhật 10/11 tối): train `q4b_holdout_a5`
+Kéo `main` từ commit `4894f0f` (có `docs/TRANG_THAI.md`, tóm tắt toàn bộ tình trạng), dựng lại dataset mã. Dữ liệu A5 đã sinh (`data/processed/callgen_checked_all.jsonl`, 4000 dòng, đã khứ hồi) dùng nguyên, **không sinh lại**.
+```bash
+# 1. dựng dữ liệu theo bộ chia A4 + A5 (phải in "callgen -> sft_train_cg.jsonl: 907 samples"; gửi lại nguyên dòng này)
+python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_rental,package_tracking,shopping_list,podcast_radio,loyalty     --hist-max 300 --callgen data/processed/callgen_checked_all.jsonl
+# 2. train: đúng công thức A4 (q4b_holdout), thêm holdout/sft_train_cg.jsonl, KHÔNG thêm sft_train_hist
+python -I -X utf8 scripts/train_sft.py --model $QWEN     --data data/processed/holdout/sft_train.jsonl data/processed/holdout/sft_train_asr.jsonl data/processed/holdout/sft_train_cg.jsonl     --out checkpoints/q4b_holdout_a5 --epochs 3 --max-len 5120 --global-batch 16 --save-limit 2
+# 3. đo app lạ và app đã thấy (chữ sạch, luật bật), như A4 và A4b
+bash scripts/infer_multi_gpu.sh train outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout_a5 --text clean
+bash scripts/infer_multi_gpu.sh train outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout_a5 --text clean
+python -I -X utf8 scripts/eval.py --sub outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt
+python -I -X utf8 scripts/eval.py --sub outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt
+# 4. so từng cặp với q4b_holdout của A4 và A4b (file unseen_q4b_holdout.jsonl, seen_q4b_holdout.jsonl bạn đã có)
+python -I -X utf8 scripts/compare_runs.py --a outputs/unseen_q4b_holdout.jsonl --b outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt --names q4b_holdout,q4b_holdout_a5
+python -I -X utf8 scripts/compare_runs.py --a outputs/seen_q4b_holdout.jsonl --b outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt --names q4b_holdout,q4b_holdout_a5
+```
+**Tiêu chí (đặt trước khi xem số):** app lạ tăng **ít nhất 5 điểm** so với **41,93**, và app đã thấy không giảm quá 3 điểm so với **66,03**. Gửi lại: dòng in của bước 1, hai điểm (tổng, exec, ask, oos), hai kết quả `compare_runs`, đường cong loss, thời gian train. Dự kiến 3,5 đến 4,5 giờ GPU.
+Nếu bước 3 đạt: **chưa train bản nộp**, chờ tôi xác nhận (sẽ dùng dữ liệu sinh lại bằng bộ sinh đã sửa).
+
+**Việc kế tiếp, độc lập với A5, làm khi GPU rảnh (BTC đã hướng dẫn đóng gói, hạn gấp):**
+1. Gộp LoRA vào Qwen3-4B: `python -I -X utf8 scripts/merge_lora.py --base $QWEN --adapter checkpoints/q4b_lora --out checkpoints/q4b_merged`. Rồi **chạy lại dev** (chữ sạch và ASR `phowl_ft`) với model đã gộp, không adapter, và so với `q4b_lora` (66,82 và 56,98): BTC không cho đưa base model vào Docker nên phải nộp bản gộp. Gửi điểm, số mẫu khác, và sha256 của các shard.
+2. A7a (notebook đã có trên nhánh của bạn): chạy toàn bộ public_test với model thật.
+
+
 Dành cho thành viên chạy GPU trên Kaggle. Chi tiết từng lệnh ở `docs/TASKS.md` (mục 0, A4, A4b, A5); file này chỉ nói thứ tự, điều kiện và cái cần gửi lại.
 
 ## Quy tắc không đổi
