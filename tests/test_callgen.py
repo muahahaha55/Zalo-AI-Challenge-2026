@@ -165,3 +165,16 @@ def test_time_stated_in_the_text_must_match_the_label():
     assert cg.text_ok("hẹn chuông năm giờ sáng mai cho cậu bạn của tôi nhé", s, cat) == (True, "ok")
     assert cg.text_ok("hẹn chuông sáu giờ sáng mai cho cậu bạn của tôi nhé", s, cat)[1] == "time_conflict"
     assert cg.text_ok("hẹn chuông năm giờ sáng ngày kia cho cậu bạn của tôi nhé", s, cat)[1] == "time_conflict"
+
+
+def test_ids_resolve_to_the_listing_not_to_a_later_receipt():
+    cat = {"bank.list": {"name": "bank.list", "kind": "read", "parameters": {"properties": {}}},
+           "bank.pay": {"name": "bank.pay", "kind": "write", "parameters": {"properties": {"account_id": {"x-ref": "bank.accounts"}}}}}
+    calls = [{"name": "bank.list", "arguments": {}}, {"name": "bank.pay", "arguments": {"account_id": "acc_02"}}]
+    results = [{"ok": True, "accounts": [{"id": "acc_01", "name": "thanh toán"}, {"id": "acc_02", "name": "tiết kiệm"}]},
+               {"ok": True, "item": {"id": "tx_01", "account_id": "acc_02", "amount": -5}}]
+    assert cg.find_path("acc_02", results) == ("accounts", "id")
+    assert cg.resolve_refs(calls, results, cat)["acc_02"]["name"] == "tiết kiệm"
+    # a later update of the same record must not hide what the id referred to before the write
+    results2 = [{"ok": True, "events": [{"id": "e1", "start": "old"}]}, {"ok": True, "item": {"id": "e1", "start": "new"}}]
+    assert cg.record_of("e1", ("events", "id"), results2)["start"] == "old"

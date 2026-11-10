@@ -138,6 +138,29 @@ Bản sửa (commit sau `dfdde56`): id chỉ được đổi sang bản ghi **c�
 5. Gửi: bản tổng hợp như lần trước, ba số ở bước 4 cho mỗi model, và **30 dòng ngẫu nhiên** mới (cùng 30 id cho hai model, kèm `verified`, `text_ok`, `agent_ok`). Chưa train.
 Cách đọc: tỉ lệ đạt của mẫu sinh ra so với CONTROL cho biết câu sinh ra nhất quán với nhãn đến đâu. Mẫu không đạt có thể là câu xấu hoặc mẫu khó (khó thì lại có ích cho train), nên đây là thước đo, không phải bộ lọc cuối.
 
+### A5, bước tiếp theo (10/11): sinh số lượng, train theo bộ chia A4, rồi mới train bản nộp
+Kết quả làm lại cho thấy câu và nhãn đủ tốt để đi tiếp (mẫu đạt khứ hồi đều hợp lý, mẫu lỗi bị bắt), và hai model viết câu tương đương nhau. Chưa có điểm nào chứng minh A5 giúp ích: bước sau phải đo trên app lạ.
+**Thay đổi so với bước thử:** (1) trộn **cả hai model** viết câu (một nửa mẫu mỗi model, để đa dạng văn phong); (2) **bỏ bước tự chấm** của model viết câu (`gen_text.py --no-verify`, cho kết quả không thông tin và tốn thời gian); (3) khứ hồi chạy **3 tiến trình song song** trên cùng GPU (96 GB đủ chỗ; giải mã từng mẫu là tác vụ chờ nên song song gần như nhân thông lượng); (4) ưu tiên chuỗi dài: `--weights 1:0.25,2:0.35,3:0.3,4:0.1`.
+```bash
+# 1. sinh call (CPU), chia đôi cho hai model viết câu
+python -I -X utf8 scripts/gen_calls.py --n 4000 --weights 1:0.25,2:0.35,3:0.3,4:0.1
+split -n l/2 -d data/processed/callgen_pending.jsonl data/processed/pend_     # pend_00 (cho 8B), pend_01 (cho 9B)
+# 2. viết câu (GPU), không tự chấm
+python -I -X utf8 scripts/gen_text.py --model <Qwen3-8B>   --inp data/processed/pend_00 --out data/processed/txt_8b.jsonl --batch 32 --no-verify
+python -I -X utf8 scripts/gen_text.py --model <Qwen3.5-9B> --inp data/processed/pend_01 --out data/processed/txt_9b.jsonl --batch 32 --no-verify
+# 3. khứ hồi bằng q4b_lora, 3 tiến trình song song (cat rồi chia ba theo dòng), bỏ --check-all
+cat data/processed/txt_8b.jsonl data/processed/txt_9b.jsonl > data/processed/txt_all.jsonl
+split -n l/3 -d data/processed/txt_all.jsonl data/processed/vpart_
+for k in 00 01 02; do python -I -X utf8 scripts/verify_callgen.py --model $QWEN --adapter checkpoints/q4b_lora    --inp data/processed/vpart_$k --out data/processed/chk_$k.jsonl & done; wait
+cat data/processed/chk_0*.jsonl > data/processed/callgen_checked_all.jsonl
+```
+Gửi lại **trước khi train**: số mẫu sinh, số mẫu được giữ (`roundtrip` true) theo số call, và 30 dòng ngẫu nhiên **của mẫu được giữ**.
+**Hai lần train, theo thứ tự (không làm lần hai nếu lần một không đạt):**
+1. **Bộ chia A4:** `build_sft.py --asr-tag phowl --hold-apps flights,bike_rental,package_tracking,shopping_list,podcast_radio,loyalty --hist-max 300 --callgen data/processed/callgen_checked_all.jsonl` (đã tự bỏ mẫu dùng app bị giấu và câu chép y hệt câu thật), train `q4b_holdout_a5` đúng công thức A4 nhưng thêm `holdout/sft_train_cg.jsonl` vào `--data`, KHÔNG thêm `sft_train_hist` (history không có bằng chứng giúp). Đo trên `holdout/eval_ids.txt` (app lạ) và `holdout/dev_ids.txt` (app đã thấy), chữ sạch, so với `q4b_holdout`: 41,93 và 66,03.
+2. **Chỉ khi (1) đạt:** train `q4b_a5` trên toàn bộ train (không giấu app) + `sft_train_cg.jsonl`, đo dev 155 mẫu chữ sạch và ASR `phowl_ft`, so với `q4b_lora` (66,82 và 56,98 với luật bật).
+**Tiêu chí quyết định (đặt trước khi xem số):** (1) đạt nếu điểm app lạ tăng **ít nhất 5 điểm** (so từng cặp bằng `compare_runs.py`) và điểm app đã thấy không giảm quá 3 điểm. (2) dùng cho bản nộp nếu dev ASR không giảm so với `q4b_lora` và dev sạch không giảm quá 2 điểm. Dev nhiễu, chênh dưới khoảng 6 điểm không phân biệt được, nên quyết định chính dựa vào (1).
+**Thời gian dự kiến:** sinh và viết câu khoảng 30 phút, khứ hồi khoảng 45 đến 60 phút với 3 tiến trình, train mỗi lần khoảng 3,5 đến 4,5 giờ (dữ liệu thêm khoảng 2000 mẫu). Làm lần (1) xong trong đêm 10/11, lần (2) trong ngày 11 đến 12/11, để chốt cấu hình 13/11. Nếu thiếu giờ GPU, báo ngay: chỉ làm (1) và dùng nó để quyết định có đáng làm (2) hay không.
+
 ### A4b. Tham chiếu "app đã thấy" cho A4 (khoảng 10 phút GPU; làm trước A5)
 **Kết quả (09/11):** khoảng cách đã thấy − lạ của `q4b_holdout` là +20,9 (chỉ exec+ask, [+10,6; +31,4]), trên ngưỡng 15 nên **làm A5** (bước thử 200 mẫu trước, chưa train). Xem `docs/BAN_GIAO_A4b.md`.
 A4 cho 41,93 trên 174 mẫu dùng app bị giấu, nhưng chưa biết model đó đạt bao nhiêu trên app **đã thấy**, nên chưa biết app lạ làm mất bao nhiêu điểm. Con số "mất khoảng 24 điểm" hiện lấy từ `q4b_lora` trên dev (66,82), khác tập mẫu, khác dữ liệu train, khác loại ASR trong train: không so được.

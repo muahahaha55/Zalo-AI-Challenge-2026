@@ -85,11 +85,16 @@ def _walk(node, path: tuple, value):
 
 
 def find_path(value: str, results: list[dict]) -> tuple | None:
-    """Path of the most recent result field equal to `value`, or None."""
-    for res in reversed(results):
+    """Where an id comes from: the key path of the field equal to `value`, or None. The first result that lists it wins, and
+    a field named `id` beats other fields (`account_id` inside a later transaction record is a mention, not the source):
+    the account list, not the transfer receipt, is what an account id refers to."""
+    fallback = None
+    for res in results:
         for path in _walk(res, (), value):
-            return path
-    return None
+            if path and path[-1] == "id":
+                return path
+            fallback = fallback or path
+    return fallback
 
 
 def values_at(path: tuple, results: list[dict]) -> list:
@@ -117,7 +122,7 @@ TYPE_KEYS = ("type", "kind", "category")
 
 def records_at(path: tuple, results: list[dict]) -> list[tuple[object, dict]]:
     """(value, record) for every distinct value at `path`; the record is the dict that holds the field (e.g. the device
-    whose `id` it is). Latest result first."""
+    whose `id` it is). Earliest result first."""
     found: list[tuple[object, dict]] = []
 
     def visit(node, depth):
@@ -131,7 +136,7 @@ def records_at(path: tuple, results: list[dict]) -> list[tuple[object, dict]]:
             elif path[depth] in node:
                 visit(node[path[depth]], depth + 1)
 
-    for res in reversed(results):
+    for res in results:
         visit(res, 0)
     return found
 
@@ -159,7 +164,7 @@ def resolve_refs(calls: list[dict], results: list[dict], cat: dict) -> dict:
                 continue
             for one in v if isinstance(v, list) else [v]:
                 path = find_path(one, results)
-                rec = record_of(one, path, results) if path else None
+                rec = record_of(one, path, results) if path else None   # earliest result: the record BEFORE the write changed it
                 if rec is not None:
                     refs[str(one)] = rec
     return refs

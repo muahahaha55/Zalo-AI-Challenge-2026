@@ -126,6 +126,8 @@ def main():
         from lifemate.callgen import apply_holdout, text_ok
         allowed = {it["id"] for it in train_only}          # base and donors must be training samples of THIS split
         hold = {x.strip() for x in a.hold_apps.split(",") if x.strip()}
+        from lifemate.leakcheck import normalize
+        real_texts = {normalize(it["audio_text"]) for it in items}      # a generated sentence that equals a real one adds nothing
         cg_rows, why = [], Counter()
         for s in read_jsonl(a.callgen):
             if s["base"] not in allowed or not set(s["donors"]) <= allowed:
@@ -140,6 +142,9 @@ def main():
             s = apply_holdout(s, hold) if hold else s
             if s is None:
                 why["held_app"] += 1
+                continue
+            if normalize(s["audio_text"]) in real_texts:
+                why["copied_real_sentence"] += 1
                 continue
             ok, reason = text_ok(s["audio_text"], s, cat)
             why[reason] += 1
