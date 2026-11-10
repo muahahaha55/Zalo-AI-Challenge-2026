@@ -1,0 +1,32 @@
+== A5 làm lại, model viết câu 9b: 200 mẫu trong callgen_checked_9b.jsonl
+model tự chấm CÓ (verified)           : 192/200 (96.0%)
+qua luật text_ok (bản mới)            : 183/200 (91.5%)
+qua bộ lọc rẻ (verified và text_ok)   : 178/200 (89.0%)
+agent q4b_lora đạt khứ hồi (agent_ok) : 109/200 (54.5%)   <- trên TẤT CẢ mẫu (--check-all)
+được giữ (lọc rẻ VÀ khứ hồi)         : 102/200 (51.0%)
+agent_ok trong mẫu QUA lọc rẻ         : 102/178 (57.3%)
+agent_ok trong mẫu BỊ LOẠI bởi lọc rẻ : 7/22 (31.8%)
+lý do text_ok loại: {'ok': 183, 'time_conflict': 8, 'missing_args': 6, 'id_or_tool_name': 3}
+-- trích từ log verify_callgen (CONTROL và hai tỉ lệ cuối):
+  CONTROL: 82/100 real samples pass (82.0%): the ceiling of this verifier
+  prefilter passed: 102/178 pass the round trip (57.3%)
+  prefilter rejected: 7/22 pass the round trip (31.8%)
+
+-- theo số call (tổng | qua lọc rẻ | agent_ok | được giữ):
+  1 call:  85 |  74 |  53 |  49
+  2 call:  64 |  58 |  36 |  33
+  3 call:  30 |  28 |  11 |  11
+  4 call:  15 |  13 |   7 |   7
+  5 call:   2 |   2 |   1 |   1
+  6 call:   3 |   2 |   0 |   0
+  7 call:   1 |   1 |   1 |   1
+
+số từ mỗi câu: min 6, trung vị 20.5, p90 33, max 58
+câu rỗng: 0 | có ký tự Hán/Nhật/Hàn: 0 (trong số được giữ: 0)
+câu trùng y hệt một câu THẬT trong train: 2/200 (1.0%)
+câu trùng nhau trong 200 mẫu: 0
+số app mỗi mẫu: {1: 165, 2: 30, 3: 5}
+app nhiều nhất: {'reminders': 41, 'calendar': 31, 'smart_home': 29, 'chat_ott': 20, 'banking': 14, 'alarm': 13, 'tasks': 10, 'ride_hailing': 9}
+mẫu dùng 1 trong 6 app A4 giấu: 3/200 (1.5%) (được giữ: 1)
+mẫu có refs (mục id trỏ tới): 98/200 (49.0%)
+đã ghi 30 dòng ngẫu nhiên (seed 0, cùng id cho mọi model) -> /kaggle/working/a5r_out/a5r_sample30_9b.txt và .jsonl (KHÔNG in nội dung ở đây)

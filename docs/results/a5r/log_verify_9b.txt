@@ -1,0 +1,9 @@
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights: 100%|██████████| 398/398 [00:00<00:00, 14742.85it/s]
+CONTROL: 82/100 real samples pass (82.0%): the ceiling of this verifier
+  50/200  {(False, False): 4, (True, True): 25, (True, False): 19, (False, True): 2}
+  100/200  {(False, False): 10, (True, True): 52, (True, False): 33, (False, True): 5}
+  150/200  {(False, False): 12, (True, True): 78, (True, False): 53, (False, True): 7}
+  200/200  {(False, False): 15, (True, True): 102, (True, False): 76, (False, True): 7}
+prefilter passed: 102/178 pass the round trip (57.3%)
+prefilter rejected: 7/22 pass the round trip (31.8%)
+thời gian verify_callgen: 517 s
