@@ -35,6 +35,14 @@ class WhisperTranscriber:
     def param_count(self) -> int:
         return sum(p.numel() for p in self.model.parameters())
 
+    def warmup(self, seconds: float = 6.0) -> None:
+        """One pass over silence of a typical length, so CUDA initialisation and kernel selection happen while the model
+        loads and not inside the first sample's time (a cold first sample took 15 s in a test)."""
+        import numpy as np
+        features = self.processor.feature_extractor([np.zeros(int(seconds * SAMPLE_RATE), dtype="float32")], sampling_rate=SAMPLE_RATE,
+                                                    return_tensors="pt").input_features.to(self._device).half()
+        self._generate(features, max_new_tokens=8)
+
     @staticmethod
     def read_wav(path: str | Path):
         import soundfile as sf

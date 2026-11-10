@@ -51,8 +51,8 @@ def main():
         except json.JSONDecodeError as e:
             problems.append(f"line {n}: invalid JSON ({e})")
             continue
-        if set(d) != {"id", "tool_calls", "state_hash"}:
-            problems.append(f"line {n}: keys {sorted(d)} != id/tool_calls/state_hash")
+        if set(d) - {"time"} != {"id", "tool_calls", "state_hash"} or ("time" in d and not isinstance(d["time"], int)):
+            problems.append(f"line {n}: keys {sorted(d)} != id/tool_calls/state_hash (+ optional integer time in ms)")
         rows.append(d)
 
     ids = [r.get("id") for r in rows]

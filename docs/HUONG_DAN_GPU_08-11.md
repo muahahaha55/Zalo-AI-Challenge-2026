@@ -1,6 +1,43 @@
 # Hướng dẫn chạy trên GPU (phiên 08/11): torch, A4, A5
 
-Dành cho thành viên chạy GPU trên Kaggle. Chi tiết từng lệnh ở `docs/TASKS.md` (mục 0, A4, A4b, A5); file này chỉ nói thứ tự, điều kiện và cái cần gửi lại.
+## LÀM NGAY (đã được người phụ trách DUYỆT chạy, 11/11): thứ tự cho người giữ GPU
+Kéo `main` từ commit `b94859b` (có `docs/TRANG_THAI.md`: tóm tắt toàn bộ tình trạng), dựng lại dataset mã. Dữ liệu A5 đã sinh (`data/processed/callgen_checked_all.jsonl`, 4000 dòng, đã khứ hồi) dùng nguyên, **không sinh lại**. **Trước khi tắt phiên Kaggle: lưu file này thành dataset Private** (nó là đầu vào cho cả hai lần train).
+
+### Bước 0 (khoảng 40 phút, làm TRƯỚC vì nó cần cho bài nộp dù A5 có đạt hay không)
+BTC không cho đưa base model vào Docker, nên bài nộp phải là mô hình đã gộp LoRA.
+```bash
+python -I -X utf8 scripts/merge_lora.py --base $QWEN --adapter checkpoints/q4b_lora --out checkpoints/q4b_merged
+# đo lại dev với model đã gộp, KHÔNG adapter (chữ sạch và ASR phowl_ft), luật bật; so với q4b_lora: 66,82 và 56,98
+bash scripts/infer_multi_gpu.sh train outputs/dev_merged_clean.jsonl --ids data/processed/dev_ids.txt --backend hf --model checkpoints/q4b_merged --text clean
+bash scripts/infer_multi_gpu.sh train outputs/dev_merged_phowl_ft.jsonl --ids data/processed/dev_ids.txt --backend hf --model checkpoints/q4b_merged --text asr:phowl_ft
+python -I -X utf8 scripts/eval.py --sub outputs/dev_merged_clean.jsonl --ids data/processed/dev_ids.txt
+python -I -X utf8 scripts/eval.py --sub outputs/dev_merged_phowl_ft.jsonl --ids data/processed/dev_ids.txt
+```
+Gửi: hai điểm dev, số mẫu khác so với `q4b_lora` (`compare_runs.py`), sha256 các shard của `q4b_merged`, và **chuyển cho chủ dự án** hai thư mục `checkpoints/q4b_merged` (LLM đã gộp, khoảng 8 GB) và `checkpoints/phowl_ft/merged` (ASR đã gộp, khoảng 3 GB) qua Google Drive riêng (không công khai), kèm sha256. Có hai thư mục này thì chủ dự án dựng được image nộp và dùng lượt Test Solution đầu của BTC.
+
+### Bước 1: train `q4b_holdout_a5`
+```bash
+# 1. dựng dữ liệu theo bộ chia A4 + A5 (phải in "callgen -> sft_train_cg.jsonl: 907 samples"; gửi lại nguyên dòng này)
+python -I -X utf8 scripts/build_sft.py --asr-tag phowl --hold-apps flights,bike_rental,package_tracking,shopping_list,podcast_radio,loyalty     --hist-max 300 --callgen data/processed/callgen_checked_all.jsonl
+# 2. train: đúng công thức A4 (q4b_holdout), thêm holdout/sft_train_cg.jsonl, KHÔNG thêm sft_train_hist
+python -I -X utf8 scripts/train_sft.py --model $QWEN     --data data/processed/holdout/sft_train.jsonl data/processed/holdout/sft_train_asr.jsonl data/processed/holdout/sft_train_cg.jsonl     --out checkpoints/q4b_holdout_a5 --epochs 3 --max-len 5120 --global-batch 16 --save-limit 2
+# 3. đo app lạ và app đã thấy (chữ sạch, luật bật), như A4 và A4b
+bash scripts/infer_multi_gpu.sh train outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout_a5 --text clean
+bash scripts/infer_multi_gpu.sh train outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt      --backend hf --model $QWEN --adapter checkpoints/q4b_holdout_a5 --text clean
+python -I -X utf8 scripts/eval.py --sub outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt
+python -I -X utf8 scripts/eval.py --sub outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt
+# 4. so từng cặp với q4b_holdout của A4 và A4b (file unseen_q4b_holdout.jsonl, seen_q4b_holdout.jsonl bạn đã có)
+python -I -X utf8 scripts/compare_runs.py --a outputs/unseen_q4b_holdout.jsonl --b outputs/unseen_q4b_holdout_a5.jsonl --ids data/processed/holdout/eval_ids.txt --names q4b_holdout,q4b_holdout_a5
+python -I -X utf8 scripts/compare_runs.py --a outputs/seen_q4b_holdout.jsonl --b outputs/seen_q4b_holdout_a5.jsonl --ids data/processed/holdout/dev_ids.txt --names q4b_holdout,q4b_holdout_a5
+```
+**Tiêu chí (đặt trước khi xem số):** app lạ tăng **ít nhất 5 điểm** so với **41,93**, và app đã thấy không giảm quá 3 điểm so với **66,03**. Gửi lại: dòng in của bước 1, hai điểm (tổng, exec, ask, oos), hai kết quả `compare_runs`, đường cong loss, thời gian train. Dự kiến 3,5 đến 4,5 giờ GPU.
+Nếu đạt: **chưa train bản nộp**, chờ chủ dự án xác nhận (sẽ dùng dữ liệu sinh lại bằng bộ sinh đã sửa, rồi train `q4b_a5` trên toàn bộ train, gộp, đo dev).
+
+### Bước 2: A7a (khoảng 1 giờ, notebook đã có trên nhánh của bạn)
+Chạy toàn bộ public_test với model thật bằng `scripts/verify_image.py --no-docker` (xem mục A7a trong `docs/TASKS.md`), dùng `q4b_merged` và `phowl_ft/merged`. Gửi `report.json`: thời gian mẫu chậm nhất, trùng ba lần, hash khớp 634/634, số dòng lệch so với `sub_public_v1.jsonl`.
+
+### Hạn
+Mục tiêu hoàn thành **bước 0 trong 11/11**, bước 1 trong đêm 11/11 đến sáng 12/11, bước 2 trong 12/11. Chốt cấu hình **13/11**. Thiếu giờ GPU thì báo ngay và làm theo thứ tự 0, 2, 1.
 
 ## Quy tắc không đổi
 - Không đưa dữ liệu cuộc thi (câu nói, bản chép lời, call, catalog) vào Claude, Copilot hay bất kỳ API ngoài nào. Model sinh câu phải chạy **trên máy Kaggle**.

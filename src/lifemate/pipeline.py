@@ -5,6 +5,7 @@ is created per sample, and every call made on it ends up in the submission.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib
 import sys
 import time
@@ -74,6 +75,11 @@ class LiveTranscripts(Transcripts):
         self._transcriber, self._root = transcriber, Path(root)
         self.failures = 0
 
+    def warm_up(self) -> None:
+        """Run the recogniser once on silence (see WhisperTranscriber.warmup); never raises."""
+        with contextlib.suppress(Exception):          # a warm-up must not be able to break the run
+            self._transcriber.warmup()
+
     def prepare(self, item: dict) -> None:
         wanted = [item["audio"]] + [h["audio"] for h in item["history"] if h["role"] == "user"]
         missing = [p for p in wanted if p not in self._asr]
@@ -115,6 +121,15 @@ class HFBackend:
         return sum(p.numel() for p in self.model.parameters())
 
     accepts_deadline = True        # the agent passes the remaining time budget as max_time (seconds)
+
+    def warm_up(self, tokens: int = 700) -> None:
+        """One short generation on a prompt of typical length, so the first sample does not pay for CUDA start-up; never raises."""
+        try:
+            ids = self.tok("xin chào " * (tokens // 2), return_tensors="pt").to("cuda")
+            with self._torch.no_grad():
+                self.model.generate(**ids, max_new_tokens=8, do_sample=False, temperature=None, top_p=None, top_k=None)
+        except Exception:  # noqa: BLE001
+            pass
 
     def __call__(self, messages: list[dict], max_time: float | None = None) -> str:
         ids = self.tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt",
@@ -189,13 +204,19 @@ class SplitRunner:
         self.stats.outcomes.append(outcome)
         return outcome
 
-    def run(self, items: list[dict], on_progress: Callable[[int, int, float], None] | None = None) -> Iterator[dict]:
+    def run(self, items: list[dict], on_progress: Callable[[int, int, float], None] | None = None,
+            with_time: bool = False) -> Iterator[dict]:
+        """`with_time`: add "time" (milliseconds for the sample, speech recognition included), as the final submission
+        format of the organisers' Docker guide requires."""
         t0 = time.monotonic()
         for n, item in enumerate(items, 1):
             outcome = self.run_item(item)
             if on_progress:
                 on_progress(n, len(items), (time.monotonic() - t0) / n)
-            yield {"id": item["id"], "tool_calls": outcome.tool_calls, "state_hash": outcome.state_hash}
+            row = {"id": item["id"], "tool_calls": outcome.tool_calls, "state_hash": outcome.state_hash}
+            if with_time:
+                row["time"] = int(round(outcome.elapsed_s * 1000))
+            yield row
 
 
 class NullBackend:

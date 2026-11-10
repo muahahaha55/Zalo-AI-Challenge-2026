@@ -60,10 +60,15 @@ def run_once(args, run_dir: Path, extra: list[str]) -> tuple[int, str, float]:
             cmd += ["--limit", str(args.limit)]
         proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     else:
-        cmd = ["docker", "run", "--rm", "--gpus", "all", "--network", "none",
-               "-v", f"{Path(args.data_root).resolve() / args.split}:/data:ro", "-v", f"{run_dir.resolve()}:/app/result", args.image, *extra]
-        if args.limit:
-            cmd += ["--limit", str(args.limit)]
+        # exactly how the organisers run it (guide 2026): folder holding the split at /data (read-only), /result, predict.sh;
+        # LIFEMATE_LIMIT / extra env only for quick tests. NVIDIA_DISABLE_REQUIRE lets a CUDA 13.2 base start on an older
+        # local driver (the torch wheel brings its own CUDA runtime); it is not needed on the organisers' driver 595.
+        env_args = ["-e", f"LIFEMATE_SPLIT={args.split}"] + (["-e", f"LIFEMATE_LIMIT={args.limit}"] if args.limit else [])
+        for kv in args.docker_env:
+            env_args += ["-e", kv]
+        cmd = ["docker", "run", "--rm", "--gpus", "all", "--network", "none", *env_args,
+               "-v", f"{Path(args.data_root).resolve()}:/data:ro", "-v", f"{run_dir.resolve()}:/result", args.image,
+               "/bin/bash", "/code/predict.sh"]
         proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return proc.returncode, proc.stdout + proc.stderr, time.monotonic() - start
 
@@ -78,6 +83,7 @@ def main() -> int:
     ap.add_argument("--ref", default=None, help="a reference submission to compare with (e.g. outputs/sub_public_v1.jsonl)")
     ap.add_argument("--limit", type=int, default=0, help="first N samples only (quick test)")
     ap.add_argument("--no-docker", action="store_true", help="run scripts/run_container.py directly instead of the image")
+    ap.add_argument("--docker-env", action="append", default=[], help="extra -e KEY=VALUE for docker run (e.g. NVIDIA_DISABLE_REQUIRE=1)")
     ap.add_argument("--no-verify", action="store_true", help="skip verify_submission.py (needs the split's zaic_tools)")
     args, extra = ap.parse_known_args()
     extra = [x for x in extra if x != "--"]
@@ -104,11 +110,13 @@ def main() -> int:
         print(f"run {r}: {entry}", flush=True)
 
     if len(outputs) >= 2:
-        same = len({sha256(o) for o in outputs}) == 1
-        report["byte_identical"] = same
-        print("byte-identical across runs:", same)
+        # the per-sample "time" field differs between runs by nature; the answers (tool_calls, state_hash) must not
+        answers = [[{k: v for k, v in json.loads(x).items() if k != "time"} for x in open(o, encoding="utf-8") if x.strip()] for o in outputs]
+        same = all(a == answers[0] for a in answers[1:])
+        report["answers_identical"] = same
+        print("answers identical across runs (time field ignored):", same)
         if not same:
-            problems.append("runs are not byte-identical (RULES 2.5)")
+            problems.append("runs give different answers (RULES 2.5)")
 
     if outputs and not args.no_verify:
         env = {**os.environ, "LIFEMATE_DATA_ROOT": str(Path(args.data_root).resolve())}
@@ -122,8 +130,10 @@ def main() -> int:
             problems.append("verify_submission.py failed")
 
     if outputs and args.ref:
-        ref = {json.loads(line)["id"]: line.strip() for line in open(args.ref, encoding="utf-8") if line.strip()}
-        got = {json.loads(line)["id"]: line.strip() for line in open(outputs[0], encoding="utf-8") if line.strip()}
+        def answers(path):
+            rows = (json.loads(line) for line in open(path, encoding="utf-8") if line.strip())
+            return {r["id"]: (r["tool_calls"], r["state_hash"]) for r in rows}
+        ref, got = answers(args.ref), answers(outputs[0])
         differ = sorted(i for i in got if i in ref and got[i] != ref[i])
         report["vs_reference"] = {"compared": sum(1 for i in got if i in ref), "different": len(differ), "first_ids": differ[:10]}
         print(f"vs reference: {report['vs_reference']}")

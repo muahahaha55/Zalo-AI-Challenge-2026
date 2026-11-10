@@ -18,6 +18,7 @@ import json
 import random
 import re
 import unicodedata
+from collections import Counter
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 
@@ -211,14 +212,42 @@ def soft_failure(result: dict) -> bool:
     return result.get("done") is False or isinstance(result.get("message"), str)
 
 
+NAME_KEYS = ("name", "title")
+
+
+def _names(rec: dict | None) -> set[str]:
+    return {str(rec[k]) for k in NAME_KEYS if rec and isinstance(rec.get(k), str) and len(rec[k]) >= 2}
+
+
+def _mentions(text: str, name: str) -> bool:
+    return re.search(r"(?<!\w)" + re.escape(name.lower()) + r"(?!\w)", text.lower()) is not None
+
+
+def stale_name(args: dict, renamed: set[str]) -> bool:
+    """A free-text argument still names the donor's record after its id was swapped (a message to Minh that starts
+    "Anh Sơn ơi", copied from a donor whose chat was with Sơn)."""
+    texts = [v for v in args.values() if isinstance(v, str)] + [x for v in args.values() if isinstance(v, list) for x in v if isinstance(x, str)]
+    return any(_mentions(t, n) for t in texts for n in renamed)
+
+
 def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, seen: list[dict], cat: dict,
-               rng: random.Random, bound: dict | None = None) -> tuple[list[dict], list[dict]] | None:
+               rng: random.Random, bound: dict | None = None, renamed: set | None = None,
+               why: Counter | None = None) -> tuple[list[dict], list[dict]] | None:
     """Replay the segment in `env` and return (calls, results), or None when anything does not fit.
     `seen` are the results already produced in this sample (ids may be taken from them).
     `bound` ({(donor id, path, donor value): new value}) keeps the binding consistent inside one sample: the same donor id
     always becomes the same new id (so "read that chat, then write to it" stays one chat) and two different donor ids
-    never collapse into one. A new id must be a record of the same kind as the donor's (see type_signature)."""
+    never collapse into one. A new id must be a record of the same kind as the donor's (see type_signature).
+    `renamed` collects the names/titles of donor records whose id was swapped for a different one; a later free-text
+    argument that still mentions such a name is rejected (stale_name). `why` counts the reasons for rejection."""
     bound = {} if bound is None else bound
+    renamed = set() if renamed is None else renamed
+    why = Counter() if why is None else why
+
+    def reject(reason: str):
+        why[reason] += 1
+        return None
+
     delta = (_day(base) - _day(donor)).days
     donor_now = datetime.fromisoformat(donor["context"]["current_time"][:19])
     base_now = datetime.fromisoformat(base["context"]["current_time"][:19])
@@ -233,20 +262,23 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
             if "x-ref" in p:
                 vals = v if isinstance(v, list) else [v]
                 if not vals:
-                    return None
+                    return reject("empty_ref")
                 path = find_path(vals[0], donor_results[:idx])    # where the donor read this id (all list items share it)
                 if path is None:
-                    return None
+                    return reject("ref_not_read")
                 picked = []
                 for dv in vals:
                     key = (donor["id"], path, dv)
                     if key not in bound:
-                        want = type_signature(record_of(dv, path, donor_results[:idx]))
+                        old_rec = record_of(dv, path, donor_results[:idx])
+                        want = type_signature(old_rec)
                         taken = {nv for (_, pth, _), nv in bound.items() if pth == path}
-                        pool = [val for val, rec in records_at(path, seen + results) if type_signature(rec) == want and val not in taken]
+                        pool = [(val, rec) for val, rec in records_at(path, seen + results) if type_signature(rec) == want and val not in taken]
                         if not pool:
-                            return None
-                        bound[key] = rng.choice(pool)
+                            return reject("no_matching_record")
+                        new_val, new_rec = rng.choice(pool)
+                        bound[key] = new_val
+                        renamed.update(n for n in _names(old_rec) if not any(_mentions(m, n) for m in _names(new_rec)))
                     picked.append(bound[key])
                 args[k] = picked if isinstance(v, list) else picked[0]
                 continue
@@ -256,15 +288,19 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
             args[k] = shift_dates(v, delta)
             for old_v, new_v in zip(v if isinstance(v, list) else [v], args[k] if isinstance(args[k], list) else [args[k]], strict=False):
                 if moved_into_the_past(old_v, new_v, donor_now, base_now):
-                    return None
+                    return reject("time_in_past")
+        if stale_name(args, renamed):
+            return reject("stale_name")
         if not env.validate(call["name"], args).get("ok", False):
-            return None
+            return reject("invalid")
         before = env.get_state_hash() if cat[call["name"]].get("kind") == "write" else None
         res = env.call(call["name"], args)
-        if not res.get("ok", False) or soft_failure(res):
-            return None
+        if not res.get("ok", False):
+            return reject("refused")
+        if soft_failure(res):
+            return reject("soft_failure")
         if before is not None and env.get_state_hash() == before:
-            return None                  # a write that changes nothing (switch an already-on light on): real labels never do (0/891)
+            return reject("noop_write")  # a write that changes nothing (switch an already-on light on): real labels never do (0/891)
         calls.append({"name": call["name"], "arguments": args})
         results.append(res)
     return calls, results
@@ -279,6 +315,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
     donors = [it for it in items if segments(it, cat)]
     out: list[dict] = []
     stats = {"tries": 0, "no_segment": 0, "rejected": 0, "duplicate": 0}
+    reasons: Counter = Counter()
     seen_keys: set[str] = set()
     shares = weights or SEGMENT_COUNT_WEIGHTS
     counts, probs = list(shares), list(shares.values())
@@ -291,6 +328,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
         results: list[dict] = []
         used: list[str] = []
         bound: dict = {}
+        renamed: set = set()
         for _ in range(want):
             apps_so_far = {app_of(c["name"]) for c in calls}           # one sub-request per app: no repeated reads
             donor, segs = None, []
@@ -303,7 +341,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
             if not segs:                                               # never emit a sample with fewer segments than asked:
                 stats["no_segment"] += 1                               # the requested --weights must hold
                 break
-            res = transplant(rng.choice(segs), donor, base, env, results, cat, rng, bound)
+            res = transplant(rng.choice(segs), donor, base, env, results, cat, rng, bound, renamed, reasons)
             if res is None:
                 stats["rejected"] += 1
                 break
@@ -321,6 +359,7 @@ def generate(items: list[dict], cat: dict, env_factory: Callable[[str], object],
             out.append({"id": f"{base['id']}#cg{len(out):05d}", "context": base["context"], "history": [],
                         "label": {"tool_calls": calls, "tool_results": results}, "base": base["id"], "donors": used,
                         "refs": resolve_refs(calls, results, cat)})
+    stats["reject_reasons"] = dict(reasons.most_common())
     return out, stats
 
 

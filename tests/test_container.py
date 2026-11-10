@@ -78,6 +78,7 @@ def test_end_to_end_plumbing_on_public_test_and_resume(tmp_path, monkeypatch):
     assert container.main(args) == 0
     rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
     assert len(rows) == 5 and all(r["tool_calls"] == [] and len(r["state_hash"]) == 64 for r in rows)
+    assert all(isinstance(r["time"], int) and r["time"] >= 0 for r in rows)            # organisers' format: ms per sample
     assert not out.with_name(out.name + ".part").exists()                           # finished: no leftover partial file
 
     # simulate a crash after 2 rows plus a half-written third line, then resume
@@ -86,4 +87,6 @@ def test_end_to_end_plumbing_on_public_test_and_resume(tmp_path, monkeypatch):
     part.write_text("\n".join(first[:2]) + "\n" + first[2][:20], encoding="utf-8")
     out.unlink()
     assert container.main([*args, "--resume"]) == 0
-    assert out.read_text(encoding="utf-8").splitlines() == first                    # identical to the uninterrupted run
+    def strip_time(lines):
+        return [{k: v for k, v in json.loads(x).items() if k != "time"} for x in lines]
+    assert strip_time(out.read_text(encoding="utf-8").splitlines()) == strip_time(first)   # same answers as the uninterrupted run

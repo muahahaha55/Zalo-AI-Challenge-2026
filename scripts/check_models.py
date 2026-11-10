@@ -45,14 +45,31 @@ def main() -> int:
     ap.add_argument("--models", default=str(ROOT / "models"))
     ap.add_argument("--lock", default=str(ROOT / "models.lock.json"))
     ap.add_argument("--skip-hash", action="store_true", help="only check files and parameters (fast; for a dry run)")
+    ap.add_argument("--update-lock", action="store_true",
+                    help="record the weights now in --models as the expected ones (after a deliberate model change, e.g. merging the LoRA)")
     a = ap.parse_args()
-    lock = json.loads(Path(a.lock).read_text(encoding="utf-8"))
     models = Path(a.models)
+    if a.update_lock:
+        lock = {"note": "Expected weight files of the final image (docker/Dockerfile copies models/ to /code/saved_models). "
+                        "Checked by scripts/check_models.py; rewrite only with --update-lock after a deliberate model change."}
+        for role in ("llm", "adapter", "asr"):
+            folder = models / role
+            if folder.is_dir():
+                lock[role] = {"required": [n for n in ("config.json", "tokenizer.json", "tokenizer_config.json", "adapter_config.json")
+                                           if (folder / n).is_file()],
+                              "weights": {w.name: sha256_file(w) for w in sorted(folder.glob("*.safetensors"))}}
+        Path(a.lock).write_text(json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+        print("lock written:", a.lock, {r: len(v["weights"]) for r, v in lock.items() if r != "note"})
+    lock = json.loads(Path(a.lock).read_text(encoding="utf-8"))
+    roles = [r for r in ("llm", "adapter", "asr") if r in lock]       # no "adapter" entry when the LoRA is merged into the LLM
     problems: list[str] = []
-    for role in ("llm", "adapter", "asr"):
+    for role in roles:
         problems += check_role(role, models / role, lock[role], a.skip_hash)
+    if (models / "adapter").is_dir() and "adapter" not in lock:
+        problems.append("adapter: folder present but not in the lock (merged model expected; remove models/adapter)")
     if not problems:
-        llm, adapter, asr = (count_path(models / r) for r in ("llm", "adapter", "asr"))
+        counts = {r: count_path(models / r) for r in roles}
+        llm, adapter, asr = counts.get("llm", 0), counts.get("adapter", 0), counts.get("asr", 0)
         print(f"parameters: LLM {llm / 1e9:.4f}B + adapter {adapter / 1e9:.4f}B, ASR {asr / 1e9:.4f}B, system {(llm + adapter + asr) / 1e9:.4f}B")
         problems += check_limits(llm + adapter, llm + adapter + asr)
     for p in problems:

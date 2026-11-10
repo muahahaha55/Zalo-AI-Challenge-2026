@@ -242,3 +242,10 @@ def test_times_that_end_up_in_the_past_and_writes_that_change_nothing_are_droppe
     donor = {"id": "d", "context": {"current_time": "2026-11-01T08:00:00+07:00", "installed_apps": {"x": {"tools": ["x.set"]}}},
              "history": [], "label": {"tool_calls": [{"name": "x.set", "arguments": {}}], "tool_results": [{"ok": True}]}}
     assert cg.transplant(cg.segments(donor, cat)[0], donor, donor, NoopEnv(), [], cat, random.Random(0)) is None
+
+
+def test_free_text_that_still_names_the_donor_record_is_rejected():
+    assert cg.stale_name({"chat_id": "chat_9", "content": "Anh Sơn ơi, gara khóa rồi ạ."}, {"Anh Sơn"})
+    assert cg.stale_name({"content": "nhắn cho sơn nhé"}, {"Sơn"})
+    assert not cg.stale_name({"content": "Sơnla là tỉnh"}, {"Sơn"})          # whole words only
+    assert not cg.stale_name({"content": "gara khóa rồi"}, {"Anh Sơn"})

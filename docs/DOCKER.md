@@ -1,5 +1,26 @@
 # Đóng gói Docker (bản nháp, chưa xác nhận với ban tổ chức)
 
+## Thông báo của BTC về Test Solution (nhận 10/11)
+BTC mở tính năng **Test Solution** trong Portal (challenge.zalo.ai, đề bài, tab "Test Solution"). Nội dung (chép từ thông báo):
+- Nhập **Google URL** và **mã checksum MD5 của Docker image**, bấm Submit Test. Hệ thống chạy thử image để phát hiện lỗi sớm (thiếu thư viện, sai định dạng đầu ra...).
+- Nếu lỗi: có "View full log". Nếu thành công: **không hiển thị chi tiết log**.
+- Kết quả chạy thử **không tính** vào số lượt nộp và không dùng để chấm.
+- **Đóng lúc 23:59 (GMT+7) ngày 15/11/2026.**
+- **Tối đa 1 bài mỗi ngày** cho mỗi đội. Cho thao tác lại tối đa 5 lần chỉ khi lỗi kỹ thuật về link, checksum hoặc tải tệp.
+
+**Quy định nộp ngày 16/11 (BTC, nhận 10/11):** đội nộp **giải pháp hoàn chỉnh gồm mã huấn luyện, mã suy luận và dữ liệu, dưới dạng gói Docker**, qua form "Solution Submission" trên cổng, kèm **checksum và link Google Drive công khai** để BTC tải. **Tối đa 2 lượt nộp, BTC chỉ chấm lượt cuối.** Hạn 23:59 (GMT+7) ngày 16/11. Nộp kết quả public (JSONL) tối đa 5 lượt mỗi ngày đến 16/11.
+**Điểm cần làm rõ trước khi đóng gói:** (1) "dữ liệu" là gì: dữ liệu của BTC (họ đã có), hay dữ liệu ta tự sinh và đã xử lý; (2) link phải "công khai" thật, hay chỉ cần ai có link (chưa liệt kê) hoặc chia sẻ riêng cho BTC: gói có thể chứa dữ liệu dẫn xuất từ dữ liệu cuộc thi, mà luật cấm chia sẻ dữ liệu cho bên thứ ba; (3) mã huấn luyện nằm trong image hay kèm theo; (4) lệnh chạy suy luận mặc định của image.
+
+**Giao diện thật (ảnh chụp 10/11):** tab Test Solution chỉ có hai ô, "Google url" (ví dụ `https://drive.google.com/file/d/1aB.../view`, tức **một tệp**, không phải thư mục) và "Checksum MD5", cùng dòng "Each team is allowed only 1 submission per day. The results are for reference only". **Không có hướng dẫn định dạng nào trên trang.**
+
+**Hệ quả cho kế hoạch (cần làm rõ với BTC / đọc kỹ cổng):**
+1. Image được nộp dưới dạng **một tệp trên Google Drive** (có link) kèm MD5. Chưa rõ định dạng: tệp `docker save` (`.tar`) hay `.tar.gz`, và có yêu cầu nào khác (tên tệp, nền tảng, lệnh chạy, đường dẫn dữ liệu, thời gian tối đa). **Phải đọc phần hướng dẫn trên cổng và hỏi lại nếu thiếu**: câu trả lời của BTC chép ở trên chưa nói các điểm này.
+2. **Kích thước:** ước lượng tệp xuất khoảng 17 đến 25 GB (image thử với model nhỏ đã 15,1 GB; trọng số thật thêm khoảng 9 GB). Google Drive miễn phí chỉ 15 GB tổng, nên cần tài khoản có dung lượng lớn (Google One hoặc tài khoản trường) và đường truyền tải lên đủ nhanh. Kiểm tra sớm.
+3. **Chỉ 1 lượt thử mỗi ngày, còn tối đa 6 ngày (10 đến 15/11):** nên dùng lượt đầu **càng sớm càng tốt** với bản `q4b_lora` hiện tại (dù chưa phải bản cuối) để biết hệ thống của BTC có chạy được image không, rồi các ngày sau thử bản đã cập nhật. Đây cũng là cách duy nhất ta chạy được trên phần cứng thật của BTC (A30).
+4. Thành công không có log, nên **không biết thời gian chạy thật**; vẫn phải tự giữ biên an toàn (ngân sách 25 giây mỗi mẫu đã đặt sẵn).
+5. Cần có công cụ xuất image và tính MD5: `docker save <image> -o lifemate.tar` (hoặc nén gzip nếu BTC yêu cầu) rồi `md5sum` / `certutil -hashfile lifemate.tar MD5`.
+
+
 Trạng thái 2026-11-07 (cuối ngày). **Chưa có hướng dẫn đóng gói của ban tổ chức** (đã gửi email hỏi). Mọi thứ dưới đây dựa trên đề bài: BTC mount thư mục private_test (cấu trúc như public_test) vào `/data`, chạy script suy luận, lấy kết quả ở `result/submission.jsonl`, container chạy offline. Khi có tài liệu chính thức, đối chiếu và sửa.
 
 ## Đã kiểm chứng và chưa kiểm chứng
