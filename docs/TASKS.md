@@ -140,6 +140,7 @@ Cách đọc: tỉ lệ đạt của mẫu sinh ra so với CONTROL cho biết c
 
 ### A5, bước tiếp theo (10/11): sinh số lượng, train theo bộ chia A4, rồi mới train bản nộp
 Kết quả làm lại cho thấy câu và nhãn đủ tốt để đi tiếp (mẫu đạt khứ hồi đều hợp lý, mẫu lỗi bị bắt), và hai model viết câu tương đương nhau. Chưa có điểm nào chứng minh A5 giúp ích: bước sau phải đo trên app lạ.
+**Lỗi tìm thêm khi kiểm tra số liệu (10/11), đã sửa trong mã:** môi trường đôi khi trả `ok: true` cho lệnh không làm gì (`done: false` hoặc `message` là chữ báo lỗi: món không có trong thực đơn, gán việc cho người không tồn tại, số dư không đủ). Bản sinh cũ giữ các lệnh này: 7/200 mẫu (3,5%) của lần làm lại, trong khi train thật chỉ có 1/1545. Đã loại ở bước sinh (`soft_failure`). **Mẫu đã sinh từ mã cũ phải bỏ**, sinh lại bằng mã mới.
 **Thay đổi so với bước thử:** (1) trộn **cả hai model** viết câu (một nửa mẫu mỗi model, để đa dạng văn phong); (2) **bỏ bước tự chấm** của model viết câu (`gen_text.py --no-verify`, cho kết quả không thông tin và tốn thời gian); (3) khứ hồi chạy **3 tiến trình song song** trên cùng GPU (96 GB đủ chỗ; giải mã từng mẫu là tác vụ chờ nên song song gần như nhân thông lượng); (4) ưu tiên chuỗi dài: `--weights 1:0.25,2:0.35,3:0.3,4:0.1`.
 ```bash
 # 1. sinh call (CPU), chia đôi cho hai model viết câu

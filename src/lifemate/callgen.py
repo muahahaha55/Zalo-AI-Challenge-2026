@@ -191,6 +191,14 @@ def eligible(segment: list[tuple[dict, int]], base: dict) -> bool:
     return all(c["name"] in installed for c, _ in segment)
 
 
+def soft_failure(result: dict) -> bool:
+    """The environment sometimes answers ok=true for a call that did nothing ("done": false, or a message that is an error
+    text such as "assignee phải là một trong [...]"). Successful sends carry a message OBJECT, so a text message means failure.
+    Real train labels contain this once in 1545 samples; the generator produced it in 3.5% (dishes missing from the menu,
+    people who do not exist, insufficient balance)."""
+    return result.get("done") is False or isinstance(result.get("message"), str)
+
+
 def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, seen: list[dict], cat: dict,
                rng: random.Random, bound: dict | None = None) -> tuple[list[dict], list[dict]] | None:
     """Replay the segment in `env` and return (calls, results), or None when anything does not fit.
@@ -235,7 +243,7 @@ def transplant(segment: list[tuple[dict, int]], donor: dict, base: dict, env, se
         if not env.validate(call["name"], args).get("ok", False):
             return None
         res = env.call(call["name"], args)
-        if not res.get("ok", False):
+        if not res.get("ok", False) or soft_failure(res):
             return None
         calls.append({"name": call["name"], "arguments": args})
         results.append(res)

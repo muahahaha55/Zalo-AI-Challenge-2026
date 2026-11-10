@@ -178,3 +178,22 @@ def test_ids_resolve_to_the_listing_not_to_a_later_receipt():
     # a later update of the same record must not hide what the id referred to before the write
     results2 = [{"ok": True, "events": [{"id": "e1", "start": "old"}]}, {"ok": True, "item": {"id": "e1", "start": "new"}}]
     assert cg.record_of("e1", ("events", "id"), results2)["start"] == "old"
+
+
+def test_calls_the_environment_silently_refused_are_dropped():
+    assert cg.soft_failure({"ok": True, "done": False, "message": "assignee phải là một trong ['Lan']"})
+    assert cg.soft_failure({"ok": True, "message": "món 'x' không có trong thực đơn"})
+    assert not cg.soft_failure({"ok": True, "message": {"id": "msg_01", "content": "hi"}})     # a sent message is an object
+    assert not cg.soft_failure({"ok": True, "item": {"id": "e1"}})
+
+    class Env:
+        def validate(self, name, args):
+            return {"ok": True}
+
+        def call(self, name, args):
+            return {"ok": True, "done": False, "message": "không tìm thấy"}
+
+    cat = {"x.do": {"name": "x.do", "kind": "write", "parameters": {"properties": {}}}}
+    donor = {"id": "d", "context": {"current_time": "2026-11-01T08:00:00+07:00", "installed_apps": {"x": {"tools": ["x.do"]}}},
+             "history": [], "label": {"tool_calls": [{"name": "x.do", "arguments": {}}], "tool_results": [{"ok": True}]}}
+    assert cg.transplant(cg.segments(donor, cat)[0], donor, donor, Env(), [], cat, random.Random(0)) is None
