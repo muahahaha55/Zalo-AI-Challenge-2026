@@ -1,0 +1,70 @@
+Loading weights:   0%|          | 0/427 [00:00<?, ?it/s]Loading weights:   0%|          | 1/427 [00:00<01:11,  5.97it/s]Loading weights:  16%|█▌        | 67/427 [00:00<00:01, 303.25it/s]Loading weights:  33%|███▎      | 140/427 [00:00<00:00, 466.11it/s]Loading weights:  48%|████▊     | 205/427 [00:00<00:00, 526.81it/s]Loading weights:  64%|██████▍   | 274/427 [00:00<00:00, 581.49it/s]Loading weights:  79%|███████▉  | 339/427 [00:00<00:00, 599.76it/s]Loading weights:  95%|█████████▍| 405/427 [00:00<00:00, 614.22it/s]Loading weights: 100%|██████████| 427/427 [00:00<00:00, 523.23it/s]
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+1989 rows, 0 already done, 1989 to write
+  32/1989  verified so far 0
+  64/1989  verified so far 0
+  96/1989  verified so far 0
+  128/1989  verified so far 0
+  160/1989  verified so far 0
+  192/1989  verified so far 0
+  224/1989  verified so far 0
+  256/1989  verified so far 0
+  288/1989  verified so far 0
+  320/1989  verified so far 0
+  352/1989  verified so far 0
+  384/1989  verified so far 0
+  416/1989  verified so far 0
+  448/1989  verified so far 0
+  480/1989  verified so far 0
+  512/1989  verified so far 0
+  544/1989  verified so far 0
+  576/1989  verified so far 0
+  608/1989  verified so far 0
+  640/1989  verified so far 0
+  672/1989  verified so far 0
+  704/1989  verified so far 0
+  736/1989  verified so far 0
+  768/1989  verified so far 0
+  800/1989  verified so far 0
+  832/1989  verified so far 0
+  864/1989  verified so far 0
+  896/1989  verified so far 0
+  928/1989  verified so far 0
+  960/1989  verified so far 0
+  992/1989  verified so far 0
+  1024/1989  verified so far 0
+  1056/1989  verified so far 0
+  1088/1989  verified so far 0
+  1120/1989  verified so far 0
+  1152/1989  verified so far 0
+  1184/1989  verified so far 0
+  1216/1989  verified so far 0
+  1248/1989  verified so far 0
+  1280/1989  verified so far 0
+  1312/1989  verified so far 0
+  1344/1989  verified so far 0
+  1376/1989  verified so far 0
+  1408/1989  verified so far 0
+  1440/1989  verified so far 0
+  1472/1989  verified so far 0
+  1504/1989  verified so far 0
+  1536/1989  verified so far 0
+  1568/1989  verified so far 0
+  1600/1989  verified so far 0
+  1632/1989  verified so far 0
+  1664/1989  verified so far 0
+  1696/1989  verified so far 0
+  1728/1989  verified so far 0
+  1760/1989  verified so far 0
+  1792/1989  verified so far 0
+  1824/1989  verified so far 0
+  1856/1989  verified so far 0
+  1888/1989  verified so far 0
+  1920/1989  verified so far 0
+  1952/1989  verified so far 0
+  1984/1989  verified so far 0
+  1989/1989  verified so far 0
+thời gian gen_text: 523 s (gồm nạp model)

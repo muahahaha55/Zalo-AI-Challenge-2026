@@ -1,0 +1,66 @@
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   0%|          | 1/399 [00:00<00:49,  8.04it/s]Loading weights:  18%|█▊        | 71/399 [00:00<00:00, 370.34it/s]Loading weights:  34%|███▎      | 134/399 [00:00<00:00, 480.79it/s]Loading weights:  48%|████▊     | 192/399 [00:00<00:00, 513.45it/s]Loading weights:  64%|██████▎   | 254/399 [00:00<00:00, 548.05it/s]Loading weights:  78%|███████▊  | 313/399 [00:00<00:00, 558.42it/s]Loading weights:  95%|█████████▍| 379/399 [00:00<00:00, 590.36it/s]Loading weights: 100%|██████████| 399/399 [00:00<00:00, 525.33it/s]
+2011 rows, 0 already done, 2011 to write
+  32/2011  verified so far 0
+  64/2011  verified so far 0
+  96/2011  verified so far 0
+  128/2011  verified so far 0
+  160/2011  verified so far 0
+  192/2011  verified so far 0
+  224/2011  verified so far 0
+  256/2011  verified so far 0
+  288/2011  verified so far 0
+  320/2011  verified so far 0
+  352/2011  verified so far 0
+  384/2011  verified so far 0
+  416/2011  verified so far 0
+  448/2011  verified so far 0
+  480/2011  verified so far 0
+  512/2011  verified so far 0
+  544/2011  verified so far 0
+  576/2011  verified so far 0
+  608/2011  verified so far 0
+  640/2011  verified so far 0
+  672/2011  verified so far 0
+  704/2011  verified so far 0
+  736/2011  verified so far 0
+  768/2011  verified so far 0
+  800/2011  verified so far 0
+  832/2011  verified so far 0
+  864/2011  verified so far 0
+  896/2011  verified so far 0
+  928/2011  verified so far 0
+  960/2011  verified so far 0
+  992/2011  verified so far 0
+  1024/2011  verified so far 0
+  1056/2011  verified so far 0
+  1088/2011  verified so far 0
+  1120/2011  verified so far 0
+  1152/2011  verified so far 0
+  1184/2011  verified so far 0
+  1216/2011  verified so far 0
+  1248/2011  verified so far 0
+  1280/2011  verified so far 0
+  1312/2011  verified so far 0
+  1344/2011  verified so far 0
+  1376/2011  verified so far 0
+  1408/2011  verified so far 0
+  1440/2011  verified so far 0
+  1472/2011  verified so far 0
+  1504/2011  verified so far 0
+  1536/2011  verified so far 0
+  1568/2011  verified so far 0
+  1600/2011  verified so far 0
+  1632/2011  verified so far 0
+  1664/2011  verified so far 0
+  1696/2011  verified so far 0
+  1728/2011  verified so far 0
+  1760/2011  verified so far 0
+  1792/2011  verified so far 0
+  1824/2011  verified so far 0
+  1856/2011  verified so far 0
+  1888/2011  verified so far 0
+  1920/2011  verified so far 0
+  1952/2011  verified so far 0
+  1984/2011  verified so far 0
+  2011/2011  verified so far 0
+thời gian gen_text: 569 s (gồm nạp model)

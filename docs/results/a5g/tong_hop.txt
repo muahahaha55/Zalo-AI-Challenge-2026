@@ -1,0 +1,37 @@
+== A5 sinh số lượng: 4000 mẫu trong callgen_checked_all.jsonl
+qua luật text_ok                          : 3081/4000 (77.0%)
+qua bộ lọc rẻ (prefilter_ok)              : 3081/4000 (77.0%)
+khứ hồi đạt trong mẫu qua lọc rẻ (agent) : 1550/3081 (50.3%)
+ĐƯỢC GIỮ (roundtrip = lọc rẻ VÀ khứ hồi)  : 1550/4000 (38.8%)
+lý do text_ok loại: {'ok': 3081, 'missing_args': 439, 'time_conflict': 358, 'id_or_tool_name': 57, 'length': 50, 'foreign_script': 15}
+
+-- theo model viết câu (tổng | qua lọc rẻ | được giữ):
+  8b: 2011 | 1491 |  725   (khứ hồi đạt trong mẫu qua lọc: 725/1491 (48.6%))
+  9b: 1989 | 1590 |  825   (khứ hồi đạt trong mẫu qua lọc: 825/1590 (51.9%))
+
+-- theo số call (tổng | qua lọc rẻ | được giữ | % giữ):
+  1 call:  908 |  748 |  505 | 56%
+  2 call: 1053 |  875 |  477 | 45%
+  3 call:  899 |  661 |  308 | 34%
+  4 call:  609 |  448 |  162 | 27%
+  5 call:  293 |  191 |   61 | 21%
+  6 call:  146 |   99 |   22 | 15%
+  7 call:   92 |   59 |   15 | 16%
+
+-- theo số APP trong mẫu (tổng | được giữ):
+  1 app: 1509 |  854
+  2 app: 1736 |  595
+  3 app:  633 |   89
+  4 app:  120 |   12
+  5 app:    2 |    0
+
+mẫu được giữ: số từ trung vị 21.0, p90 38, max 59
+câu rỗng: 0 | có ký tự Hán/Nhật/Hàn: 9 (trong số được giữ: 0)
+câu trùng y hệt câu THẬT: 0/4000 (0.0%) (trong số được giữ: 0; build_sft sẽ bỏ)
+câu trùng nhau trong số được giữ: 6
+mẫu dùng 1 trong 6 app A4 giấu: 97/4000 (2.4%) (trong số được giữ: 41; bị bỏ khi train theo bộ chia A4)
+ƯỚC LƯỢNG số mẫu dùng được: train toàn bộ 1550; theo bộ chia A4 tối đa 1509 (chưa trừ mẫu có mẫu gốc/donor nằm ngoài train của bộ chia A4; số chính xác ở cell xem trước build_sft)
+số app mỗi mẫu được giữ: {1: 854, 2: 595, 3: 89, 4: 12}
+app nhiều nhất trong số được giữ: {'reminders': 410, 'calendar': 266, 'chat_ott': 229, 'alarm': 206, 'banking': 167, 'smart_home': 136, 'notes': 132, 'tasks': 99}
+
+đã ghi 30 dòng ngẫu nhiên của mẫu được giữ (seed 0) -> /kaggle/working/a5g_out/a5g_sample30_kept.txt và .jsonl (KHÔNG in nội dung ở đây)

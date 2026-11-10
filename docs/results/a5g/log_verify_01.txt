@@ -1,0 +1,28 @@
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:   0%|          | 1/398 [00:00<00:45,  8.66it/s]Loading weights:   2%|▏         | 8/398 [00:00<00:12, 30.96it/s]Loading weights:   3%|▎         | 11/398 [00:00<00:18, 21.21it/s]Loading weights:   4%|▍         | 16/398 [00:00<00:13, 27.71it/s]Loading weights:   6%|▌         | 23/398 [00:00<00:10, 34.43it/s]Loading weights:   7%|▋         | 27/398 [00:00<00:10, 35.73it/s]Loading weights:   8%|▊         | 33/398 [00:01<00:09, 38.20it/s]Loading weights:   9%|▉         | 37/398 [00:01<00:11, 30.57it/s]Loading weights:  11%|█         | 42/398 [00:01<00:10, 34.41it/s]Loading weights:  12%|█▏        | 47/398 [00:01<00:09, 35.41it/s]Loading weights:  13%|█▎        | 51/398 [00:01<00:10, 33.06it/s]Loading weights:  14%|█▍        | 55/398 [00:01<00:11, 29.12it/s]Loading weights:  15%|█▌        | 61/398 [00:01<00:11, 30.20it/s]Loading weights:  16%|█▋        | 65/398 [00:02<00:11, 28.23it/s]Loading weights:  18%|█▊        | 71/398 [00:02<00:11, 28.51it/s]Loading weights:  19%|█▉        | 75/398 [00:02<00:14, 22.10it/s]Loading weights:  21%|██▏       | 85/398 [00:02<00:09, 33.35it/s]Loading weights:  23%|██▎       | 92/398 [00:02<00:08, 37.79it/s]Loading weights:  24%|██▍       | 97/398 [00:03<00:08, 36.58it/s]Loading weights:  26%|██▌       | 102/398 [00:03<00:09, 32.37it/s]Loading weights:  27%|██▋       | 108/398 [00:03<00:07, 36.35it/s]Loading weights:  28%|██▊       | 113/398 [00:03<00:10, 28.36it/s]Loading weights:  29%|██▉       | 117/398 [00:03<00:10, 25.97it/s]Loading weights:  31%|███       | 124/398 [00:04<00:12, 21.81it/s]Loading weights:  33%|███▎      | 130/398 [00:04<00:11, 23.57it/s]Loading weights:  36%|███▋      | 145/398 [00:04<00:08, 31.08it/s]Loading weights:  40%|███▉      | 158/398 [00:04<00:05, 41.30it/s]Loading weights:  42%|████▏     | 166/398 [00:05<00:04, 46.70it/s]Loading weights:  43%|████▎     | 172/398 [00:05<00:05, 40.98it/s]Loading weights:  44%|████▍     | 177/398 [00:05<00:06, 33.86it/s]Loading weights:  45%|████▌     | 181/398 [00:05<00:06, 34.66it/s]Loading weights:  46%|████▋     | 185/398 [00:06<00:09, 22.10it/s]Loading weights:  51%|█████▏    | 204/398 [00:06<00:04, 45.10it/s]Loading weights:  53%|█████▎    | 211/398 [00:06<00:04, 38.34it/s]Loading weights:  55%|█████▍    | 217/398 [00:06<00:05, 30.53it/s]Loading weights:  56%|█████▌    | 222/398 [00:07<00:06, 25.94it/s]Loading weights:  59%|█████▉    | 235/398 [00:07<00:04, 38.73it/s]Loading weights:  61%|██████    | 241/398 [00:07<00:04, 34.84it/s]Loading weights:  62%|██████▏   | 248/398 [00:07<00:03, 38.08it/s]Loading weights:  64%|██████▍   | 254/398 [00:07<00:04, 35.11it/s]Loading weights:  65%|██████▌   | 259/398 [00:07<00:03, 34.83it/s]Loading weights:  66%|██████▌   | 263/398 [00:08<00:04, 30.65it/s]Loading weights:  69%|██████▊   | 273/398 [00:08<00:03, 39.55it/s]Loading weights:  71%|███████   | 282/398 [00:08<00:02, 45.25it/s]Loading weights:  72%|███████▏  | 287/398 [00:08<00:02, 43.32it/s]Loading weights:  73%|███████▎  | 292/398 [00:09<00:04, 24.52it/s]Loading weights:  74%|███████▍  | 296/398 [00:09<00:04, 21.81it/s]Loading weights:  76%|███████▌  | 301/398 [00:09<00:04, 22.01it/s]Loading weights:  76%|███████▋  | 304/398 [00:09<00:04, 20.84it/s]Loading weights:  80%|████████  | 320/398 [00:09<00:01, 41.13it/s]Loading weights:  82%|████████▏ | 326/398 [00:10<00:02, 29.59it/s]Loading weights:  83%|████████▎ | 331/398 [00:10<00:02, 31.46it/s]Loading weights:  84%|████████▍ | 336/398 [00:10<00:02, 25.04it/s]Loading weights:  85%|████████▌ | 340/398 [00:10<00:02, 22.66it/s]Loading weights:  86%|████████▌ | 343/398 [00:11<00:03, 16.39it/s]Loading weights:  88%|████████▊ | 352/398 [00:11<00:01, 24.89it/s]Loading weights:  93%|█████████▎| 372/398 [00:11<00:00, 44.28it/s]Loading weights:  95%|█████████▍| 378/398 [00:11<00:00, 45.16it/s]Loading weights:  98%|█████████▊| 389/398 [00:11<00:00, 52.27it/s]Loading weights: 100%|██████████| 398/398 [00:11<00:00, 33.41it/s]
+  50/1345  {(True, False): 20, (True, True): 16}
+  100/1345  {(True, False): 43, (True, True): 35}
+  150/1345  {(True, False): 59, (True, True): 54}
+  200/1345  {(True, False): 75, (True, True): 76}
+  250/1345  {(True, False): 100, (True, True): 94}
+  300/1345  {(True, False): 125, (True, True): 105}
+  350/1345  {(True, False): 144, (True, True): 123}
+  400/1345  {(True, False): 159, (True, True): 144}
+  450/1345  {(True, False): 176, (True, True): 161}
+  500/1345  {(True, False): 188, (True, True): 186}
+  550/1345  {(True, False): 207, (True, True): 208}
+  600/1345  {(True, False): 230, (True, True): 219}
+  650/1345  {(True, False): 240, (True, True): 241}
+  700/1345  {(True, False): 259, (True, True): 261}
+  750/1345  {(True, False): 275, (True, True): 283}
+  800/1345  {(True, False): 290, (True, True): 301}
+  850/1345  {(True, False): 302, (True, True): 330}
+  900/1345  {(True, False): 322, (True, True): 352}
+  950/1345  {(True, False): 342, (True, True): 374}
+  1000/1345  {(True, False): 360, (True, True): 400}
+  1050/1345  {(True, False): 376, (True, True): 419}
+  1100/1345  {(True, False): 396, (True, True): 443}
+  1150/1345  {(True, False): 419, (True, True): 462}
+  1200/1345  {(True, False): 443, (True, True): 479}
+  1250/1345  {(True, False): 462, (True, True): 498}
+  1300/1345  {(True, False): 487, (True, True): 517}
+prefilter passed: 527/1041 pass the round trip (50.6%)
