@@ -57,6 +57,24 @@ Thời gian: khoảng 3,5 đến 4,5 giờ GPU mỗi lần train.
 | 16/11 | Nộp chính thức (Drive "Anyone with the link" + MD5), **trước 00:00 ngày 16/11 phải chốt danh sách thành viên đội** |
 | 20/11, 23/11 | Private test, nộp kết quả cuối |
 
+## 6b. Từ khi người giữ GPU xong đến lúc có bài nộp (việc của chủ dự án)
+| # | Việc | Phụ thuộc | Ước lượng |
+|---|---|---|---|
+| 1 | Nhận `q4b_merged` và `phowl_ft/merged` (khoảng 11 GB) về máy, đặt vào `models/llm` và `models/asr`, xóa `models/adapter` | bước 0 của người giữ GPU | 1 giờ (tải) |
+| 2 | `python scripts/check_models.py --update-lock` (ghi sha256 mới), kiểm giới hạn tham số (kỳ vọng 5,566B) | 1 | 5 phút |
+| 3 | `bash scripts/build_submission.sh <TeamName>`: dựng image (cu130 như lúc train), `docker save | gzip`, MD5 | 2, Docker chạy, ổ C còn trống khoảng 60 GB | khoảng 1,5 giờ (dựng khoảng 45 phút, nén khoảng 30 đến 40 phút) |
+| 4 | Tải `zac2026_<TeamName>.tar.gz` (khoảng 20 GB) lên Google Drive, chia sẻ "Anyone with the link" | 3, mạng | khoảng 1 đến 3 giờ |
+| 5 | **Test Solution lượt đầu** (ô Google URL và MD5 trên cổng) | 4 | 1 lượt/ngày, hạn 15/11 |
+| 6 | Đọc kết quả BTC: lỗi thì xem log, sửa, dựng lại, thử lượt kế (ngày sau) | 5 | theo log |
+| 7 | **Chốt cấu hình 13/11:** `q4b_lora` đã gộp hoặc `q4b_a5` (nếu thí nghiệm đạt và dev không giảm) | kết quả A5, bước 0 | quyết định |
+| 8 | Nếu dùng A5: sinh lại 4000 mẫu bằng bộ sinh đã sửa, train toàn bộ, gộp, đo dev, rồi lặp 1 đến 6 | 7 | khoảng 7 giờ GPU thêm, chỉ khi A5 đạt tiêu chí |
+| 9 | Kiểm tra cuối: README (`submission/README.md`, `training_code/README.md`) khớp cấu hình thật; `check_compliance`; chạy lặp ba lần | 7 | 1 giờ |
+| 10 | **Chốt danh sách thành viên đội trước 00:00 ngày 16/11** (cổng khóa sau đó) | | 5 phút |
+| 11 | **Nộp chính thức qua form "Solution Submission"** (link Drive, MD5): nộp lượt đầu **sớm** (15/11 hoặc sáng 16/11), giữ lượt thứ hai để sửa; BTC chỉ chấm lượt cuối | 9 | hạn 23:59 ngày 16/11 |
+| 12 | Sau 20/11: BTC chạy image trên private_test; nộp kết quả cuối theo thông báo của BTC (hạn 23/11) | | |
+
+**Điểm có thể trượt:** (a) tải 20 GB lên Drive chậm; (b) lỗi chỉ lộ khi BTC chạy (cu130, GPU 5090 hay A30); (c) mô hình gộp đo lại dev tụt điểm (khi đó phải xử lý trước khi nộp); (d) ổ C: gần đầy làm Docker sập.
+
 ## 7. Việc đang chờ
 | Việc | Ai |
 |---|---|
