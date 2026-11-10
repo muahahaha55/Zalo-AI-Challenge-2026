@@ -20,3 +20,8 @@ wandb/
 kaggle_upload/
 checkpoints/
 models/
+
+# submission build outputs
+docker/COMMIT.txt
+zac2026_*.tar.gz
+zac2026_*.tar.gz.md5

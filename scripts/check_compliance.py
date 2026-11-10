@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Code that runs at inference time (dev-only scripts such as eval.py / verify_metric.py are deliberately excluded:
 # they use get_state on train, which is allowed in development).
-INFERENCE_GLOBS = ["src/lifemate/*.py", "scripts/run_infer.py", "docker/*.py", "docker/**/*.py", "inference/*.py"]
+INFERENCE_GLOBS = ["src/lifemate/*.py", "submission/*.py", "scripts/run_infer.py", "docker/*.py", "docker/**/*.py", "inference/*.py"]
 INFERENCE_EXCLUDE = ["src/lifemate/metric.py", "src/lifemate/__init__.py"]
 
 FORBIDDEN = [  # (regex, why)

@@ -1,4 +1,8 @@
-"""Entry point for the final container: read the mounted split, run ASR + agent per sample, write result/submission.jsonl.
+"""Entry point for the final container: read the mounted split, run ASR + agent per sample, write /result/submission.jsonl.
+
+Organisers' guide (2026): they run `docker run --gpus ... -v <data>:/data:ro -v <result>:/result <image> /bin/bash
+/code/predict.sh` without network; the split is mounted as /data/<split>/ (nested) and every output line carries
+{"id", "tool_calls", "state_hash", "time"} with time in milliseconds per sample.
 
 The organisers mount a folder "with the same structure as public_test" at /data. Two layouts are accepted and detected:
   flat   : /data IS the split folder          (/data/audio/, /data/<split>.jsonl, /data/zaic_tools/, ...)
@@ -14,6 +18,7 @@ import argparse
 import os
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -102,44 +107,65 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     env = os.environ.get
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", default=env("LIFEMATE_DATA_DIR", "/data"), help="mounted folder (default /data)")
-    ap.add_argument("--out", default=env("LIFEMATE_OUT", "result/submission.jsonl"))
-    ap.add_argument("--split", default=None, help="split name; detected when omitted")
+    ap.add_argument("--out", default=env("LIFEMATE_OUT", "/result/submission.jsonl"))
+    ap.add_argument("--split", default=env("LIFEMATE_SPLIT") or None, help="split name; detected when omitted")
     ap.add_argument("--backend", choices=["hf", "null"], default="hf", help="null: answer END everywhere (plumbing test)")
     ap.add_argument("--llm", default=env("LIFEMATE_LLM", "/models/llm"))
-    ap.add_argument("--adapter", default=env("LIFEMATE_ADAPTER", "/models/adapter"), help="LoRA folder, or 'none'")
+    ap.add_argument("--adapter", default=env("LIFEMATE_ADAPTER", "/models/adapter"),
+                    help="LoRA folder, or 'none'; a folder that does not exist means none (merged weights in --llm)")
     ap.add_argument("--asr", default=env("LIFEMATE_ASR", "/models/asr"), help="Whisper folder, 'clean' or 'none'")
     ap.add_argument("--time-budget", type=float, default=25.0, help="seconds per sample incl. recognition (contest limit: 30)")
     ap.add_argument("--no-rules", action="store_true")
     ap.add_argument("--resume", action="store_true", help="continue an interrupted run from <out>.part")
-    ap.add_argument("--limit", type=int, default=0, help="first N samples only (testing)")
+    ap.add_argument("--limit", type=int, default=int(env("LIFEMATE_LIMIT") or 0), help="first N samples only (testing)")
+    ap.add_argument("--time", action=argparse.BooleanOptionalAction, default=True,
+                    help="add the per-sample \"time\" field in milliseconds (organisers' format; --no-time to omit)")
     ap.add_argument("--manifest", default=env("LIFEMATE_MANIFEST"), help="write a provenance file here after a successful run "
                     "(off by default: the organisers collect result/; hashing the weights takes about a minute)")
     return ap.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+SEED = 0      # the one seed of the solution (decoding is greedy); predict_notebook.ipynb uses the same
+
+
+def build_runner(args: argparse.Namespace) -> tuple[SplitRunner, Layout, str | None]:
+    """Everything that is loaded once: the data layout, the LLM (+ adapter) and the recogniser. Shared by predict.py
+    (main) and predict_notebook.ipynb, so both produce the same answers."""
     force_offline()
-    seed_everything(0)
+    seed_everything(SEED)
     layout = resolve_layout(args.data, args.split)
     split_dir = layout.data_root / layout.split
     print(f"split {layout.split!r} ({'flat' if layout.flat else 'nested'} layout) at {args.data}", flush=True)
-
+    adapter = None if args.adapter == "none" or not Path(args.adapter).is_dir() else args.adapter
     backend = NullBackend()
     if args.backend == "hf":
-        backend = HFBackend(args.llm, None if args.adapter == "none" else args.adapter)
+        backend = HFBackend(args.llm, adapter)
     runner = SplitRunner(layout.split, AgentConfig(use_rules=not args.no_rules, time_budget_s=args.time_budget or None),
                          build_transcripts(args.asr, split_dir), backend=backend, data_root=layout.data_root)
+    return runner, layout, adapter
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    t_load = time.perf_counter()
+    runner, layout, adapter = build_runner(args)
+    split_dir = layout.data_root / layout.split
+    print(f"load model: {int((time.perf_counter() - t_load) * 1000)} ms (llm {args.llm}, adapter {adapter or 'none'}, asr {args.asr})", flush=True)
     items = runner.items(limit=args.limit)
 
     def progress(n: int, total: int, avg: float) -> None:
         if (n - 1) % 20 == 0:
             print(f"{n}/{total}  avg {avg:.2f}s", flush=True)
 
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    t_pred = time.perf_counter()
     with ResumableJsonlWriter(args.out, resume=args.resume) as writer:
         todo = [i for i in items if i["id"] not in writer.done]
-        for row in runner.run(todo, progress):
+        for row in runner.run(todo, progress, with_time=args.time):
             writer.write(row)
+    ms = int((time.perf_counter() - t_pred) * 1000)
+    print(f"predict: {len(todo)} samples, {ms} ms, mean {ms / max(1, len(todo)):.0f} ms/sample", flush=True)
+    print(f"output saved in {args.out}", flush=True)
     print("done", runner.stats.summary(), flush=True)
     if args.manifest:
         asr_dir = args.asr if Path(args.asr).is_dir() else None

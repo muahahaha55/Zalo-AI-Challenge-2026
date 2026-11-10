@@ -189,13 +189,19 @@ class SplitRunner:
         self.stats.outcomes.append(outcome)
         return outcome
 
-    def run(self, items: list[dict], on_progress: Callable[[int, int, float], None] | None = None) -> Iterator[dict]:
+    def run(self, items: list[dict], on_progress: Callable[[int, int, float], None] | None = None,
+            with_time: bool = False) -> Iterator[dict]:
+        """`with_time`: add "time" (milliseconds for the sample, speech recognition included), as the final submission
+        format of the organisers' Docker guide requires."""
         t0 = time.monotonic()
         for n, item in enumerate(items, 1):
             outcome = self.run_item(item)
             if on_progress:
                 on_progress(n, len(items), (time.monotonic() - t0) / n)
-            yield {"id": item["id"], "tool_calls": outcome.tool_calls, "state_hash": outcome.state_hash}
+            row = {"id": item["id"], "tool_calls": outcome.tool_calls, "state_hash": outcome.state_hash}
+            if with_time:
+                row["time"] = int(round(outcome.elapsed_s * 1000))
+            yield row
 
 
 class NullBackend:

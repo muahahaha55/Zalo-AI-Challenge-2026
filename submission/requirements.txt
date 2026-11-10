@@ -1,0 +1,12 @@
+# Inference + timing notebook. torch is installed first from the PyTorch CUDA index (see docker/Dockerfile), pinned to
+# torch==2.11.0 like the training environment (Kaggle: torch 2.11.0+cu130, Python 3.13). The Hugging Face stack below is
+# the exact one that trained the models (pip freeze of the training session, docs/env/kaggle_freeze_2026-11-08.txt).
+transformers==5.20.2
+peft==0.21.2
+accelerate==1.15.0
+safetensors==0.8.0
+tokenizers==0.23.3
+huggingface_hub==1.33.0
+numpy==2.1.3
+soundfile==0.14.0
+jupyterlab==4.4.10
