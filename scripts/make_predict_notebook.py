@@ -46,10 +46,11 @@ print("output saved in /result/jupyter_submission.jsonl")"""),
 ]
 
 
-def cell(kind, text):
+def cell(kind, text, counter=[0]):  # noqa: B006 - a counter for the cell ids that nbformat 4.5 requires
+    counter[0] += 1
     lines = text.split("\n")
     src = [line + "\n" for line in lines[:-1]] + [lines[-1]]
-    c = {"cell_type": kind, "metadata": {}, "source": src}
+    c = {"cell_type": kind, "id": f"cell{counter[0]:02d}", "metadata": {}, "source": src}
     if kind == "code":
         c.update({"execution_count": None, "outputs": []})
     return c

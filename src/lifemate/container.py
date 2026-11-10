@@ -142,6 +142,10 @@ def build_runner(args: argparse.Namespace) -> tuple[SplitRunner, Layout, str | N
         backend = HFBackend(args.llm, adapter)
     runner = SplitRunner(layout.split, AgentConfig(use_rules=not args.no_rules, time_budget_s=args.time_budget or None),
                          build_transcripts(args.asr, split_dir), backend=backend, data_root=layout.data_root)
+    for part in (backend, runner.transcripts):             # CUDA start-up happens here (load time), not in the first sample
+        warm = getattr(part, "warm_up", None)
+        if warm:
+            warm()
     return runner, layout, adapter
 
 

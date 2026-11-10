@@ -31,6 +31,12 @@ COPY submission/requirements.txt /code/requirements.txt
 RUN python3 -m pip install torch==2.11.0 --index-url ${TORCH_INDEX} \
  && python3 -m pip install -r /code/requirements.txt
 
+# The base image ships cuda-compat (a forward-compatibility libcuda 595.45) and ldconfig ranks it ahead of the host driver's libcuda.
+# On a host whose driver is older than the image's CUDA, or on a GeForce card, that library makes torch report "No CUDA GPUs are
+# available" (seen on a driver-572 RTX 4050). The organisers' driver (595.58.03) supports CUDA 13.2 natively, so the compat
+# package is not needed: remove it, and the image uses the host's libcuda everywhere. (Placed after the pip layers to keep the build cache.)
+RUN apt-get purge -y cuda-compat-13-2 && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && ldconfig
+
 # inference code + entry points
 COPY src /code/src
 COPY submission/ /code/
