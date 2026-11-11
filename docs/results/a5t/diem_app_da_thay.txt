@@ -1,0 +1,12 @@
+N=132  score=63.93
+  gold_calls=0     n=   14  mean= 85.71
+  gold_calls=1     n=   29  mean= 67.82
+  gold_calls=2     n=   42  mean= 53.17
+  gold_calls=3     n=   30  mean= 67.97
+  gold_calls=4     n=   12  mean= 66.67
+  gold_calls=5     n=    5  mean= 40.00
+  history=False    n=   62  mean= 70.65
+  history=True     n=   70  mean= 57.99
+  kind=ask         n=   16  mean= 52.08
+  kind=exec        n=  102  mean= 62.80
+  kind=oos         n=   14  mean= 85.71

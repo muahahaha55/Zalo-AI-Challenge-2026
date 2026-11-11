@@ -1,0 +1,2 @@
+merged model saved to checkpoints/q4b_merged: 4.0225B parameters, dtype bfloat16
+thời gian gộp: 9 s

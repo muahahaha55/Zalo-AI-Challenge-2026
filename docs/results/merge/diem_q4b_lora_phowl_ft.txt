@@ -1,0 +1,12 @@
+N=155  score=56.98
+  gold_calls=0     n=   12  mean= 33.33
+  gold_calls=1     n=   45  mean= 77.04
+  gold_calls=2     n=   47  mean= 51.06
+  gold_calls=3     n=   30  mean= 50.32
+  gold_calls=4     n=   14  mean= 41.07
+  gold_calls=5     n=    7  mean= 68.57
+  history=False    n=   49  mean= 62.40
+  history=True     n=  106  mean= 54.47
+  kind=ask         n=   26  mean= 63.33
+  kind=exec        n=  117  mean= 57.99
+  kind=oos         n=   12  mean= 33.33

@@ -1,0 +1,4 @@
+HOLDOUT ['bike_rental', 'flights', 'loyalty', 'package_tracking', 'podcast_radio', 'shopping_list']: 174 eval samples held out of training, 1312 samples left for training/dev
+history turns -> sft_train_hist.jsonl: 300 samples; candidates {'multi': 462, 'none': 386, 'one_write': 463, 'one_read': 1246, 'taken': {'multi': 120, 'none': 60, 'one_write': 75, 'one_read': 45}, 'selected': 300}
+callgen -> sft_train_cg.jsonl: 907 samples; {'not_train': 1791, 'roundtrip_failed': 1302, 'ok': 907}
+groups=1033 train=1180 dev=132 (dev groups=130)

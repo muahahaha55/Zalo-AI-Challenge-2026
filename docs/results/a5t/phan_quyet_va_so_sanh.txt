@@ -1,0 +1,31 @@
+== app LẠ (eval_ids, 174): n=174
+   mốc q4b_holdout 41.93  ->  q4b_holdout_a5 39.35   chênh từng cặp -2.58 [-9.09; +4.05]  (25 tốt lên, 29 tệ đi, 120 bằng)
+   exec  (n=153):  42.80 ->  42.16
+   ask   (n= 21):  35.56 ->  18.89
+== app ĐÃ THẤY (dev_ids, 132): n=132
+   mốc q4b_holdout 66.03  ->  q4b_holdout_a5 63.93   chênh từng cặp -2.10 [-7.67; +3.20]  (12 tốt lên, 13 tệ đi, 107 bằng)
+   exec  (n=102):  62.84 ->  62.80
+   ask   (n= 16):  62.92 ->  52.08
+   oos   (n= 14):  92.86 ->  85.71
+
+Tiêu chí Phương đặt trước: (1) app lạ tăng >= +5,00; (2) app đã thấy không giảm quá 3,00 (tức chênh >= -3,00).
+  (1) app lạ -2.58: KHÔNG đạt   (2) app đã thấy -2.10: ĐẠT
+  => LẦN TRAIN 1 KHÔNG ĐẠT: không làm lần 2, báo Phương
+Lưu ý: dev nhiễu, chênh dưới khoảng 6 điểm khó phân biệt; đọc kèm khoảng tin cậy ở trên (Phương dặn quyết định chính dựa vào tiêu chí 1).
+
+################ compare_runs: app LẠ (q4b_holdout -> q4b_holdout_a5)
+N=174   q4b_holdout: 41.93   q4b_holdout_a5: 39.35
+paired diff (q4b_holdout_a5-q4b_holdout): -2.58 pts   95% bootstrap interval [-9.09, +4.05]   -> NOT distinguishable from 0
+samples better 25, worse 29, equal 120
+  exec  n=153  diff  -0.64   better 22  worse 22
+  ask   n= 21  diff -16.67   better 3  worse 7
+largest changes: train_0698(-100), train_0876(-100), train_0950(-100), train_0979(+100), train_1090(+100), train_1113(-100), train_1145(-100), train_1148(-100)
+
+################ compare_runs: app ĐÃ THẤY (q4b_holdout -> q4b_holdout_a5)
+N=132   q4b_holdout: 66.03   q4b_holdout_a5: 63.93
+paired diff (q4b_holdout_a5-q4b_holdout): -2.10 pts   95% bootstrap interval [-7.67, +3.20]   -> NOT distinguishable from 0
+samples better 12, worse 13, equal 107
+  exec  n=102  diff  -0.04   better 12  worse 9
+  ask   n= 16  diff -10.83   better 0  worse 3
+  oos   n= 14  diff  -7.14   better 0  worse 1
+largest changes: train_0637(+100), train_0770(-100), train_1031(-100), train_1116(-100), train_1146(+100), train_1169(-100), train_1396(-100), train_1428(+100)

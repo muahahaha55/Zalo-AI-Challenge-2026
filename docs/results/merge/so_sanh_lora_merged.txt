@@ -1,0 +1,21 @@
+################ chữ sạch: q4b_lora -> q4b_merged   (kỳ vọng mốc 66,82)
+N=155   q4b_lora: 66.82   q4b_merged: 66.82
+paired diff (q4b_merged-q4b_lora): +0.00 pts   95% bootstrap interval [+0.00, +0.00]   -> NOT distinguishable from 0
+samples better 0, worse 0, equal 155
+  exec  n=117  diff  +0.00   better 0  worse 0
+  ask   n= 26  diff  +0.00   better 0  worse 0
+  oos   n= 12  diff  +0.00   better 0  worse 0
+largest changes: train_0004(+0), train_0025(+0), train_0028(+0), train_0033(+0), train_0038(+0), train_0041(+0), train_0061(+0), train_0065(+0)
+
+################ ASR phowl_ft: q4b_lora -> q4b_merged   (kỳ vọng mốc 56,98)
+N=155   q4b_lora: 56.98   q4b_merged: 56.98
+paired diff (q4b_merged-q4b_lora): +0.00 pts   95% bootstrap interval [+0.00, +0.00]   -> NOT distinguishable from 0
+samples better 0, worse 0, equal 155
+  exec  n=117  diff  +0.00   better 0  worse 0
+  ask   n= 26  diff  +0.00   better 0  worse 0
+  oos   n= 12  diff  +0.00   better 0  worse 0
+largest changes: train_0004(+0), train_0025(+0), train_0028(+0), train_0033(+0), train_0038(+0), train_0041(+0), train_0061(+0), train_0065(+0)
+
+################ số dòng giống hệt (tool_calls và state_hash) giữa q4b_lora và q4b_merged
+clean    : 151/155 mẫu giống hệt, 4 mẫu khác
+phowl_ft : 152/155 mẫu giống hệt, 3 mẫu khác

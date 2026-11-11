@@ -1,0 +1,14 @@
+GPU: NVIDIA RTX PRO 6000 Blackwell Server Edition, 580.178.04, 97887 MiB
+run 1: {'run': 1, 'exit_code': 0, 'wall_s': 1083.8, 'samples': 634, 'mean_s': 1.63, 'p95_s': 3.0, 'max_s': 5.67, 'stop_reasons': "{'end': 546, 'ask': 75, 'repeated_read': 6, 'max_steps': 5, 'invalid_call': 2}", 'sha256': 'bc035a1ded68cb009383df98840ade1d4040e70295486b289875fd3629f89461', 'rows': 634}
+run 2: {'run': 2, 'exit_code': 0, 'wall_s': 906.5, 'samples': 634, 'mean_s': 1.42, 'p95_s': 2.77, 'max_s': 5.63, 'stop_reasons': "{'end': 546, 'ask': 75, 'repeated_read': 6, 'max_steps': 5, 'invalid_call': 2}", 'sha256': '93c65a47fc199f2a5a4419d7029594813da93919337cc42e5614f18925dc78c0', 'rows': 634}
+run 3: {'run': 3, 'exit_code': 0, 'wall_s': 907.1, 'samples': 634, 'mean_s': 1.42, 'p95_s': 2.77, 'max_s': 5.65, 'stop_reasons': "{'end': 546, 'ask': 75, 'repeated_read': 6, 'max_steps': 5, 'invalid_call': 2}", 'sha256': '9fa298153efe612c0230e6836bf0b28ff369834c3956a08c79056b40dbfdf2c2', 'rows': 634}
+answers identical across runs (time field ignored): True
+verify_submission:
+  OK
+    hash reproduced: 634   hash differs: 0   rejected calls: 0   tools outside installed_apps: 0
+    empty tool_calls: 33   mean calls/sample: 2.31   max: 8
+  OK: safe to run `python -m zaic_tools --split public_test --root . --validate <sub>` and submit (after approval)
+vs reference: {'compared': 634, 'different': 48, 'first_ids': ['public_0023', 'public_0026', 'public_0028', 'public_0055', 'public_0098', 'public_0112', 'public_0113', 'public_0133', 'public_0181', 'public_0189']}
+
+ALL CHECKS PASSED
+tổng thời gian: 2898 s

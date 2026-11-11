@@ -1,0 +1,3 @@
+done 174 samples; mean 1.62s p95 3.52s max 4.73s; stop reasons {'end': 158, 'ask': 14, 'max_steps': 1, 'repeated_read': 1}
+done 132 samples; mean 1.55s p95 3.07s max 4.10s; stop reasons {'end': 115, 'ask': 16, 'repeated_read': 1}
+thời gian train: 10351 s

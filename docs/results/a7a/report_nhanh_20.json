@@ -1,0 +1,47 @@
+{
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition, 580.178.04, 97887 MiB",
+  "image": null,
+  "runs": [
+    {
+      "run": 1,
+      "exit_code": 0,
+      "wall_s": 50.9,
+      "samples": 20,
+      "mean_s": 1.67,
+      "p95_s": 2.97,
+      "max_s": 3.53,
+      "stop_reasons": "{'end': 18, 'ask': 2}",
+      "sha256": "727a778205b26e3ee2cbeec457f6aa4c3b582d8e500e8c49a15b485bd481d5db",
+      "rows": 20
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "wall_s": 37.4,
+      "samples": 20,
+      "mean_s": 1.53,
+      "p95_s": 2.82,
+      "max_s": 3.45,
+      "stop_reasons": "{'end': 18, 'ask': 2}",
+      "sha256": "84d34424adafdce6cfbe9c914560f524ab4332651748f90b719b150a7e6f3ce4",
+      "rows": 20
+    }
+  ],
+  "answers_identical": true,
+  "verify_submission": {
+    "exit_code": 0,
+    "tail": [
+      "  hash reproduced: 20   hash differs: 0   rejected calls: 0   tools outside installed_apps: 0",
+      "  empty tool_calls: 0   mean calls/sample: 2.90   max: 6",
+      "OK: safe to run `python -m zaic_tools --split public_test --root . --validate <sub>` and submit (after approval)"
+    ]
+  },
+  "vs_reference": {
+    "compared": 20,
+    "different": 1,
+    "first_ids": [
+      "public_0023"
+    ]
+  },
+  "problems": []
+}

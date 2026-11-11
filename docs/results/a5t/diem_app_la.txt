@@ -1,0 +1,10 @@
+N=174  score=39.35
+  gold_calls=1     n=   48  mean= 52.08
+  gold_calls=2     n=   74  mean= 37.93
+  gold_calls=3     n=   32  mean= 32.14
+  gold_calls=4     n=   13  mean= 13.46
+  gold_calls=5     n=    7  mean= 48.17
+  history=False    n=   49  mean= 33.19
+  history=True     n=  125  mean= 41.77
+  kind=ask         n=   21  mean= 18.89
+  kind=exec        n=  153  mean= 42.16
