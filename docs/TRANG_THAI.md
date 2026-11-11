@@ -12,37 +12,31 @@ Qwen3-4B + LoRA (`q4b_lora`) và PhoWhisper-large đã fine-tune, luật `rules.
 | A4: giấu 6 app, đo trên app lạ | **41,93** (app lạ) | thí nghiệm gốc để đo A5 |
 | A4b: cùng model trên app đã thấy | **66,03**; **khoảng cách 21 điểm** | app lạ là điểm yếu chính, đáng làm A5 |
 | A6: thêm câu ASR nhiễu | tiền đề sai (model đã học trên ASR gốc) | **rút lại** |
-| A5 thử 200 mẫu (hai lần) | lần 1 nhãn sai, lần 2 chấp nhận được | sửa bộ sinh rồi sinh số lượng |
+| A5: 4000 mẫu tự sinh, train theo bộ chia A4 | app lạ 39,35 (mốc 41,93), exec không đổi | **không đạt, dừng** (mục 3) |
+| Gộp LoRA vào Qwen3-4B | dev trùng 66,82 và 56,98 | dùng cho bài nộp |
+| A7a: toàn bộ giải pháp trên public_test | đúng, tất định, max 5,67 s | đạt (mục 4) |
 
-## 3. A5 (dữ liệu tự sinh) đang ở đâu
-**A5 là gì:** lấy các đoạn call thật trong train, chạy lại trong môi trường của mẫu khác (id đổi theo môi trường mới, nhãn đúng sẵn), rồi nhờ **model chạy trên máy (Qwen3-8B và Qwen3.5-9B)** viết câu nói. Lọc 3 lớp: luật đơn giản, rồi **khứ hồi** (adapter `q4b_lora` đọc câu, chạy agent, chỉ giữ mẫu ra đúng trạng thái như nhãn).
+## 3. A5 (dữ liệu tự sinh): đã thử và DỪNG (11/11)
+Sinh 4000 mẫu (giữ 1550; dùng được 907 cho bộ chia A4), train `q4b_holdout_a5` theo bộ chia A4, đo trên app lạ (174 mẫu) và app đã thấy (132 mẫu):
 
-**Đã sinh 4000 mẫu (đã chạy xong trên Kaggle, model viết câu là 8B và 9B, mỗi cái một nửa):**
-| Bước | Số mẫu |
-|---|---|
-| Sinh ra | 4000 |
-| Qua luật lọc rẻ | 3081 |
-| **Được giữ sau khứ hồi (dùng cho bản nộp)** | **1550** (8B 725, 9B 825) |
-| Trong đó dùng được cho thí nghiệm theo bộ chia A4 | **907** |
+| | `q4b_holdout` (mốc) | `q4b_holdout_a5` | Chênh từng cặp |
+|---|---|---|---|
+| App lạ | 41,93 | **39,35** | −2,58 [−9,09; +4,05] |
+| App lạ, loại exec (nhắm vào đây) | 42,80 | 42,16 | −0,64 |
+| App đã thấy | 66,03 | 63,93 | −2,10 |
 
-**Vì sao 907 chứ không phải 1550:** thí nghiệm A4 giấu 6 app và 155+ mẫu dev khỏi train. Một mẫu A5 dựng từ mẫu nền và các mẫu cho; nếu **bất kỳ** mẫu nào trong số đó nằm ngoài phần train của bộ chia A4 (thuộc app bị giấu hoặc thuộc dev) thì phải bỏ để không rò. Quá trình: 4000, bỏ 1791 mẫu dính vào phần ngoài train, còn 2209, bỏ 1302 mẫu không qua lọc, còn **907**. Với bản nộp thật (không giấu app) dùng được 1550.
+**Tiêu chí đặt trước (app lạ tăng ít nhất 5 điểm): không đạt.** Đáng chú ý là loại exec, loại mẫu A5 nhắm tới, **không đổi** (−0,64), còn ask và oos tụt. Giả thuyết (chưa kiểm chứng): mẫu A5 chỉ gồm gọi tool, nên kéo model bớt hỏi lại. **Quyết định: không train lần 2, không sinh thêm dữ liệu; giữ `q4b_lora` (bản đã gộp) làm bài nộp.** Điểm yếu app lạ (chênh 21 điểm so với app đã thấy) vẫn còn, ta không có cách đã chứng minh để thu hẹp nó trước hạn chốt.
 
-**Chất lượng (đọc tay 30 mẫu được giữ):** 28/30 đúng và tự nhiên. Một lỗi đã tìm ra và **đã sửa trong mã** (câu nhắn cho Minh nhưng nội dung còn gọi tên "Sơn" chép từ mẫu cho): ảnh hưởng khoảng 3% dữ liệu đã sinh, nên không chặn thí nghiệm này.
-
-**Về "model to hơn" (Qwen3.6-27B, Gemma 4 31B):** không cần. 8B và 9B đã sinh xong 4000 mẫu, và hai model cho kết quả khứ hồi ngang nhau (khoảng 50%). Điểm nghẽn là bộ lọc khứ hồi, không phải sức viết của model.
-
-## 4. Việc tiếp theo cho A5 (người chạy GPU)
-1. Train `q4b_holdout_a5`: dữ liệu bộ chia A4 + 907 mẫu A5 (không có `history`), đúng công thức A4.
-2. Đo trên app lạ (so với **41,93**) và app đã thấy (so với **66,03**).
-3. **Tiêu chí đặt trước:** app lạ tăng **ít nhất 5 điểm** và app đã thấy không giảm quá 3 điểm. Nếu đạt: train bản nộp với 1550 mẫu (bộ sinh đã sửa). Nếu không: giữ `q4b_lora`.
-Thời gian: khoảng 3,5 đến 4,5 giờ GPU mỗi lần train.
+## 4. Bản đã gộp LoRA và A7a (đã làm)
+- **Gộp LoRA vào Qwen3-4B:** dev trùng hoàn toàn (66,82 sạch, 56,98 ASR), 4,0225B tham số, một file `model.safetensors` (khoảng 8 GB) sha256 `652e96ae…`. Đủ điều kiện làm bài nộp (BTC không cho đưa base model vào image).
+- **A7a (public_test 634 mẫu, ASR sống, 3 lần):** trùng câu trả lời, hash 634/634, 0 lệnh bị từ chối, **mẫu chậm nhất 5,67 s**; **48/634 dòng khác `sub_public_v1.jsonl`** (nguyên nhân chưa tách: gộp bf16 hay ASR sống). Đo trên Blackwell 97 GB, chưa phải máy chấm.
 
 ## 5. Đóng gói nộp (BTC hướng dẫn 10/11)
 | Mục | Tình trạng |
 |---|---|
-| Khung `/code` (predict.sh, predict.py, notebook, README, training_code) | **đã viết**, chạy thử không Docker với backend rỗng |
-| Dockerfile (CUDA 13.2, không ENTRYPOINT, torch 2.11.0) | **đã viết, chưa dựng** (Docker tắt) |
-| Gộp LoRA vào Qwen3-4B (`scripts/merge_lora.py`) | script xong; **chưa chạy**; cần GPU và **phải đo lại dev** trước khi dùng |
+| Khung `/code` (predict.sh, predict.py, notebook, README, training_code) | **đã viết và chạy thử trong Docker với model nhỏ** (GPU, hai lần giống nhau, notebook, Jupyter) |
+| Dockerfile (CUDA 13.2, không ENTRYPOINT, torch 2.11.0, đã gỡ `cuda-compat`) | **đã dựng và thử với model nhỏ** (20 GB); bản thật chưa dựng |
+| Gộp LoRA vào Qwen3-4B (`scripts/merge_lora.py`) | **xong**, dev trùng; trọng số đang ở bạn kia, **chờ chuyển qua Drive** |
 | Test Solution của BTC | 1 lượt/ngày, **đóng 23:59 ngày 15/11** |
 | Nộp chính thức | **23:59 ngày 16/11**, tối đa 2 lượt, lượt cuối được chấm |
 | GPU của máy chấm | **chưa rõ** (RTX 5090 hay A30), cần hỏi BTC |
@@ -51,9 +45,10 @@ Thời gian: khoảng 3,5 đến 4,5 giờ GPU mỗi lần train.
 ## 6. Mốc
 | Ngày | Việc |
 |---|---|
-| 11 đến 12/11 | Train A5 (bộ chia A4), gộp LoRA và đo lại, dựng image, **Test Solution lượt đầu** |
-| 13/11 | **Chốt cấu hình** (q4b_lora hay q4b_a5) |
-| 14 đến 15/11 | Kiểm tra Docker, Test Solution thêm lượt, sửa theo log |
+| 11/11 | Nhận hai thư mục model từ bạn kia, dựng image thật, tải lên Drive, **Test Solution lượt đầu** |
+| 12 đến 13/11 | Đọc kết quả BTC, sửa theo log; nộp kết quả public của đường chạy cuối để so với 48,56 |
+| 13/11 | **Chốt cấu hình** (đã quyết: `q4b_lora` bản gộp, trừ khi có lỗi) |
+| 14 đến 15/11 | Test Solution thêm lượt, kiểm tra cuối |
 | 16/11 | Nộp chính thức (Drive "Anyone with the link" + MD5), **trước 00:00 ngày 16/11 phải chốt danh sách thành viên đội** |
 | 20/11, 23/11 | Private test, nộp kết quả cuối |
 
@@ -78,7 +73,7 @@ Thời gian: khoảng 3,5 đến 4,5 giờ GPU mỗi lần train.
 ## 7. Việc đang chờ
 | Việc | Ai |
 |---|---|
-| Push 2 commit (bộ khung nộp, bộ lọc tên cũ) | tôi, chờ bạn đồng ý |
-| Thư hỏi BTC (GPU, dữ liệu huấn luyện, base model khi gộp LoRA) | bạn gửi, tôi soạn |
-| Train A5 theo bộ chia A4 | bạn kia (GPU) |
-| Bật Docker để dựng thử image | bạn |
+| Chuyển `q4b_merged/` (8 GB), `phowl_ft/merged/` (3 GB) và `SHA256SUMS_merged.txt` qua Drive riêng; gửi thêm `submission.jsonl` của A7a (đầu ra public_test của đường chạy cuối) | bạn kia (GPU) |
+| Giải phóng ổ C: (còn 43 GB; cần khoảng 45 GB cho dựng và xuất), mở lại Docker Desktop | bạn |
+| Thư hỏi BTC (GPU chấm, dữ liệu huấn luyện, gộp LoRA) | bạn gửi, tôi soạn |
+| Chốt danh sách thành viên đội trước 00:00 ngày 16/11 | bạn |
