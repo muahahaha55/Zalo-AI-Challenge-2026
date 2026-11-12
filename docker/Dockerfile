@@ -22,7 +22,11 @@ ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Ho_Chi_Minh PYTHONUNBUFFERED=1 PIP_NO
     LIFEMATE_LLM=/code/saved_models/llm LIFEMATE_ADAPTER=/code/saved_models/adapter LIFEMATE_ASR=/code/saved_models/asr \
     HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_DATASETS_OFFLINE=1 USE_HUB_KERNELS=NO
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip libsndfile1 tzdata \
+# APT_MIRROR (optional): download packages from this mirror instead of archive.ubuntu.com / security.ubuntu.com, for a build
+# machine where those names do not resolve (e.g. http://mirror.bizflycloud.vn/ubuntu). It changes only where the build downloads from.
+ARG APT_MIRROR=
+RUN if [ -n "$APT_MIRROR" ]; then sed -i "s|http://archive.ubuntu.com/ubuntu/\?|$APT_MIRROR/|g; s|http://security.ubuntu.com/ubuntu/\?|$APT_MIRROR/|g" /etc/apt/sources.list; fi \
+ && apt-get update && apt-get install -y --no-install-recommends python3 python3-pip libsndfile1 tzdata \
  && rm -rf /var/lib/apt/lists/* && python3 -m pip install --upgrade pip
 
 # Dependencies are installed while building (network then) and never at run time.
