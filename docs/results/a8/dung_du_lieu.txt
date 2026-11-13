@@ -1,0 +1,6 @@
+HOLDOUT ['bike_rental', 'flights', 'loyalty', 'package_tracking', 'podcast_radio', 'shopping_list']: 174 eval samples held out of training, 1312 samples left for training/dev
+augmentation -> sft_train_aug.jsonl: 100 samples (100 synthetic oos, 0 variants)
+name masking -> sft_train_mask.jsonl: 1180 samples; {'masked': 1180, 'skipped_unknown_tool': 0, 'asr': 579}
+groups=1033 train=1180 dev=132 (dev groups=130)
+98c6666af18efe188327f39b9d1bb20a7decc82184e7a0a37f8c8ada669a12d2  data/processed/holdout/sft_train_mask.jsonl
+1eafaf6c7c9f4913c83039230a1ad8688f3861bdcaf6c5f1d00f559b71f8a61a  data/processed/holdout/sft_train_aug.jsonl

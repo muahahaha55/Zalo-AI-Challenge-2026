@@ -1,0 +1,5 @@
+OK   data/processed/holdout/sft_train.jsonl: 1180 rows, 3779 training steps, longest step 4387 tokens, 0 over max-len 5120
+OK   data/processed/holdout/sft_train_asr.jsonl: 1180 rows, 3779 training steps, longest step 4374 tokens, 0 over max-len 5120
+OK   data/processed/holdout/sft_train_aug.jsonl: 100 rows, 100 training steps, longest step 1731 tokens, 0 over max-len 5120
+OK   data/processed/holdout/sft_train_mask.jsonl: 1180 rows, 3779 training steps, longest step 4621 tokens, 0 over max-len 5120
+total training steps per epoch: 11437

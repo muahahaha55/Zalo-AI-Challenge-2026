@@ -1,0 +1,31 @@
+== app LẠ (eval_ids, 174): n=174
+   mốc q4b_holdout 41.93  ->  q4b_holdout_mask 44.49   chênh từng cặp +2.56 [-3.91; +9.01]  (31 tốt lên, 23 tệ đi, 120 bằng)
+   exec  (n=153):  42.80 ->  46.02
+   ask   (n= 21):  35.56 ->  33.33
+== app ĐÃ THẤY (dev_ids, 132): n=132
+   mốc q4b_holdout 66.03  ->  q4b_holdout_mask 67.67   chênh từng cặp +1.64 [-4.84; +8.01]  (17 tốt lên, 14 tệ đi, 101 bằng)
+   exec  (n=102):  62.84 ->  67.25
+   ask   (n= 16):  62.92 ->  48.33
+   oos   (n= 14):  92.86 ->  92.86
+
+Tiêu chí đặt trước (như A5): (1) app lạ tăng >= +5,00; (2) app đã thấy không giảm quá 3,00 (tức chênh >= -3,00).
+  (1) app lạ +2.56: KHÔNG đạt   (2) app đã thấy +1.64: ĐẠT
+  => A8 KHÔNG ĐẠT: giữ bài nộp hiện tại, báo Phương
+Lưu ý: dev nhiễu, chênh dưới khoảng 6 điểm khó phân biệt; đọc kèm khoảng tin cậy ở trên (Phương dặn quyết định chính dựa vào tiêu chí 1).
+
+################ compare_runs: app LẠ (q4b_holdout -> q4b_holdout_mask)
+N=174   q4b_holdout: 41.93   q4b_holdout_mask: 44.49
+paired diff (q4b_holdout_mask-q4b_holdout): +2.56 pts   95% bootstrap interval [-3.91, +9.01]   -> NOT distinguishable from 0
+samples better 31, worse 23, equal 120
+  exec  n=153  diff  +3.21   better 28  worse 19
+  ask   n= 21  diff  -2.22   better 3  worse 4
+largest changes: train_0452(+100), train_0491(-100), train_0520(+100), train_0589(+100), train_0701(-100), train_0816(+100), train_0876(-100), train_0942(+100)
+
+################ compare_runs: app ĐÃ THẤY (q4b_holdout -> q4b_holdout_mask)
+N=132   q4b_holdout: 66.03   q4b_holdout_mask: 67.67
+paired diff (q4b_holdout_mask-q4b_holdout): +1.64 pts   95% bootstrap interval [-4.84, +8.01]   -> NOT distinguishable from 0
+samples better 17, worse 14, equal 101
+  exec  n=102  diff  +4.40   better 16  worse 11
+  ask   n= 16  diff -14.58   better 1  worse 3
+  oos   n= 14  diff  +0.00   better 0  worse 0
+largest changes: train_0012(+100), train_0615(+100), train_0637(+100), train_0770(-100), train_0919(-100), train_0957(-100), train_1031(-100), train_1100(-100)

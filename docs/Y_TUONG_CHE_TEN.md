@@ -1,6 +1,8 @@
-# Ý tưởng: che tên app và tool khi train để model đọc mô tả (A8, đề xuất, CHƯA chạy)
+# Ý tưởng: che tên app và tool khi train để model đọc mô tả (A8, ĐÃ CHẠY: không đạt)
 
-Ngày 2026-11-13. Người viết: thuan (cùng Claude). Trạng thái: **mã đã viết và kiểm tra trên máy local, chưa train**. Phương đã quyết dừng train sau A5; tài liệu này chỉ để Phương quyết có mở lại một lần train hay không. Mã mới **không đổi** đầu ra cũ của `build_sft.py` (đã kiểm từng byte, mục 5) và không đụng đến suy luận.
+> **Kết quả (13/11, 4 × L4):** không đạt tiêu chí. App lạ 41,93 → 44,49 (+2,56 [−3,91; +9,01]), app đã thấy 66,03 → 67,67 (+1,64). exec tăng ở cả hai tập và mẫu gọi tool ngoài nhãn giảm (đúng chiều giả thuyết), nhưng trong nhiễu; ask tụt. Giữ bài nộp hiện tại. Chi tiết: `docs/BAN_GIAO_A8.md`.
+
+Ngày 2026-11-13. Người viết: thuan (cùng Claude). Trạng thái lúc viết: **mã đã viết và kiểm tra trên máy local, chưa train**. Phương đã quyết dừng train sau A5, rồi cho phép thử A8. Mã mới **không đổi** đầu ra cũ của `build_sft.py` (đã kiểm từng byte, mục 5) và không đụng đến suy luận.
 
 ## 1. Vấn đề cần giải
 - App lạ là chỗ mất điểm lớn nhất: cùng một model, **41,93** trên app lạ so với **66,03** trên app đã thấy (A4, A4b). Public có **65%** mẫu chứa app lạ; điểm public 48,74 thấp hơn dev ASR (56,98) khoảng 8 điểm.
