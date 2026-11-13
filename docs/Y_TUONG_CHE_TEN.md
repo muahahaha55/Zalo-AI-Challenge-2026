@@ -63,7 +63,7 @@ python -X utf8 scripts/compare_runs.py --a <unseen_q4b_holdout.jsonl của A4> -
 python -X utf8 scripts/compare_runs.py --a <seen_q4b_holdout.jsonl của A4b> --b outputs/seen_q4b_holdout_mask.jsonl --ids $H/dev_ids.txt --names q4b_holdout,q4b_holdout_mask
 ```
 - **Tiêu chí (giữ như A5):** app lạ tăng **ít nhất 5 điểm** so với 41,93 **và** app đã thấy không giảm quá 3 điểm so với 66,03.
-- **Thời gian ước:** 11437 bước mỗi epoch; A5 với 10549 bước mất 2 giờ 52 phút, nên khoảng **3 giờ 5 phút đến 3 giờ 20 phút** train (prompt che dài hơn khoảng 12%), cộng khoảng 20 phút đo. Một GPU RTX PRO 6000.
+- **Thời gian ước:** 11437 bước mỗi epoch; A5 với 10549 bước mất 2 giờ 52 phút, nên khoảng **3 giờ 5 phút đến 3 giờ 20 phút** train (prompt che dài hơn khoảng 12%), cộng khoảng 20 phút đo, trên một GPU RTX PRO 6000. Trên **L4 x4** (24 GB mỗi card) ước **4 đến 6 giờ** train (chưa đo); khi có nhiều GPU phải train bằng `torchrun --nproc_per_node=<số GPU>` để batch tổng vẫn là 16 (chạy `python train_sft.py` thì Trainer tự dùng DataParallel và batch tổng thành 16 nhân số GPU). Notebook `a8-mask-holdout` tự làm việc này. So với mốc `q4b_holdout` (train trên 1 GPU RTX PRO 6000) có thêm một nguồn sai khác nhỏ: khác GPU và chia dữ liệu theo DDP, cùng batch tổng và cùng số bước.
 - Gộp hai thay đổi (che tên và oos) trong một lần train nên **không tách được** cái nào có tác dụng; chấp nhận vì chỉ có thời gian cho một lần. Đọc thêm theo loại mẫu: exec trên app lạ cho biết phần che tên; ask và oos cho biết phần oos.
 
 ## 7. Nếu đạt: bản nộp
