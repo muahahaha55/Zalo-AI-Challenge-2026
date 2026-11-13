@@ -13,6 +13,7 @@ Qwen3-4B + LoRA (`q4b_lora`) và PhoWhisper-large đã fine-tune, luật `rules.
 | A4b: cùng model trên app đã thấy | **66,03**; **khoảng cách 21 điểm** | app lạ là điểm yếu chính, đáng làm A5 |
 | A6: thêm câu ASR nhiễu | tiền đề sai (model đã học trên ASR gốc) | **rút lại** |
 | A5: 4000 mẫu tự sinh, train theo bộ chia A4 | app lạ 39,35 (mốc 41,93), exec không đổi | **không đạt, dừng** (mục 3) |
+| A8: che tên app và tool khi train | app lạ 44,49 (mốc 41,93, +2,56, khoảng tin cậy chứa 0), ask tụt | **không đạt, dừng**; giữ `q4b_lora` bản gộp |
 | Gộp LoRA vào Qwen3-4B | dev trùng 66,82 và 56,98 | dùng cho bài nộp |
 | A7a: toàn bộ giải pháp trên public_test | đúng, tất định, max 5,67 s | đạt (mục 4) |
 
