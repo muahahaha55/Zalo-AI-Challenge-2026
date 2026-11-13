@@ -1,0 +1,14 @@
+== app LẠ (eval_ids, 174): n=174
+   mốc q4b_holdout 41.93  ->  baseline 41.93   chênh từng cặp +0.00 [+0.00; +0.00]  (0 tốt lên, 0 tệ đi, 174 bằng)
+   exec  (n=153):  42.80 ->  42.80
+   ask   (n= 21):  35.56 ->  35.56
+== app ĐÃ THẤY (dev_ids, 132): n=132
+   mốc q4b_holdout 66.03  ->  baseline 66.03   chênh từng cặp +0.00 [+0.00; +0.00]  (0 tốt lên, 0 tệ đi, 132 bằng)
+   exec  (n=102):  62.84 ->  62.84
+   ask   (n= 16):  62.92 ->  62.92
+   oos   (n= 14):  92.86 ->  92.86
+
+Tiêu chí đặt trước (như A5): (1) app lạ tăng >= +5,00; (2) app đã thấy không giảm quá 3,00 (tức chênh >= -3,00).
+  (1) app lạ +0.00: KHÔNG đạt   (2) app đã thấy +0.00: ĐẠT
+  => A8 KHÔNG ĐẠT: giữ bài nộp hiện tại, báo Phương
+Lưu ý: dev nhiễu, chênh dưới khoảng 6 điểm khó phân biệt; đọc kèm khoảng tin cậy ở trên (Phương dặn quyết định chính dựa vào tiêu chí 1).

@@ -2,6 +2,8 @@
 Usage: python -I -X utf8 scripts/build_sft.py [--tokenizer Qwen/Qwen3-4B] [--asr-tag phowl_ft] [--aug-oos 100 --aug-variants 1] [--hist-max 700]
 Extra data (train split only, never dev) goes to SEPARATE files so the base files stay unchanged:
   --aug-oos N / --aug-variants K   sft_train_aug.jsonl  (see lifemate.augment.synthetic_samples)
+  --aug-mask N                     sft_train_mask.jsonl: masked copies of N train samples, app and tool names replaced by random
+                                   strings per sample (lifemate.masking; teaches reading tool descriptions instead of names)
   --hist-max N                     sft_train_hist.jsonl (earlier turns of train samples' history, see lifemate.augment.history_samples)
   --retract-copies K / --retract-replace N / --retract-cancel M
                                    sft_train_retract.jsonl: the real self-correction samples repeated K times (safe: real labels), plus N
@@ -61,6 +63,7 @@ def main():
     ap.add_argument("--asr-tag", default=None, help="also write *_asr.jsonl with ASR transcripts (data/processed/asr_<tag>_train.jsonl)")
     ap.add_argument("--aug-oos", type=int, default=0)
     ap.add_argument("--aug-variants", type=int, default=0)
+    ap.add_argument("--aug-mask", type=int, default=0, help="N: also write sft_train_mask.jsonl with N name-masked train samples")
     ap.add_argument("--retract-copies", type=int, default=0, help="repeat the real self-correction samples K times")
     ap.add_argument("--retract-replace", type=int, default=0, help="N compositions '<retracted request>, <marker>, <real request>'")
     ap.add_argument("--retract-cancel", type=int, default=0, help="M compositions '<request>, <marker> khỏi' (answer: no call)")
@@ -112,6 +115,11 @@ def main():
         aug, st = synthetic_samples(train_only, cat, asr, random.Random(a.seed + 1), a.aug_oos, a.aug_variants)
         emit(out / "sft_train_aug.jsonl", aug)
         print(f"augmentation -> sft_train_aug.jsonl: {len(aug)} samples ({st['oos']} synthetic oos, {st['variants']} variants)")
+    if a.aug_mask:
+        from lifemate.masking import masked_samples
+        masked, st = masked_samples(train_only, cat, asr, random.Random(a.seed + 5), a.aug_mask)
+        emit(out / "sft_train_mask.jsonl", masked)
+        print(f"name masking -> sft_train_mask.jsonl: {len(masked)} samples; {st}")
     if a.hist_max:
         hist, st = history_samples(train_only, cat, asr, random.Random(a.seed + 2), a.hist_max)
         emit(out / "sft_train_hist.jsonl", hist)

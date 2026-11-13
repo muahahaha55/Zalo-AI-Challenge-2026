@@ -1,0 +1,19 @@
+0, NVIDIA L4, 23034 MiB
+1, NVIDIA L4, 23034 MiB
+2, NVIDIA L4, 23034 MiB
+3, NVIDIA L4, 23034 MiB
+thời gian train: 23100 s trên 4 GPU
+global batch 16
+11437 step examples; mean len 1948; 4 GPU(s) x bs 1 x accum 4 = global batch 16
+trainable params: 132,120,576 || all params: 4,154,588,672 || trainable%: 3.1801
+{'train_runtime': '2.229e+04', 'train_samples_per_second': '1.539', 'train_steps_per_second': '0.096', 'train_loss': '0.04816', 'epoch': '3'}
+-- đo (mỗi dòng một GPU) app lạ:
+done 44 samples; mean 8.69s p95 15.90s max 25.67s; stop reasons {'end': 41, 'ask': 3}
+done 44 samples; mean 6.99s p95 12.53s max 17.70s; stop reasons {'end': 38, 'ask': 6}
+done 43 samples; mean 7.41s p95 13.51s max 16.98s; stop reasons {'end': 39, 'ask': 4}
+done 43 samples; mean 6.30s p95 9.44s max 18.05s; stop reasons {'end': 37, 'ask': 6}
+-- app đã thấy:
+done 33 samples; mean 7.30s p95 13.46s max 15.67s; stop reasons {'end': 30, 'ask': 3}
+done 33 samples; mean 7.21s p95 13.13s max 15.76s; stop reasons {'end': 29, 'ask': 4}
+done 33 samples; mean 8.26s p95 17.04s max 18.70s; stop reasons {'end': 31, 'ask': 2}
+done 33 samples; mean 7.01s p95 14.35s max 17.85s; stop reasons {'end': 27, 'ask': 6}

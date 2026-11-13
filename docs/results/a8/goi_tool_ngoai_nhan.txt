@@ -1,0 +1,4 @@
+app la       moc : exec n=153; goi >=1 tool ngoai nhan: 42 (27%); 0 diem: 74 (trong do goi tool ngoai nhan: 34)
+app la       A8  : exec n=153; goi >=1 tool ngoai nhan: 33 (22%); 0 diem: 68 (trong do goi tool ngoai nhan: 26)
+app da thay  moc : exec n=102; goi >=1 tool ngoai nhan: 20 (20%); 0 diem: 32 (trong do goi tool ngoai nhan: 14)
+app da thay  A8  : exec n=102; goi >=1 tool ngoai nhan: 14 (14%); 0 diem: 28 (trong do goi tool ngoai nhan: 11)
