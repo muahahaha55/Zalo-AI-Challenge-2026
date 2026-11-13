@@ -29,6 +29,7 @@ Sinh 4000 mẫu (giữ 1550; dùng được 907 cho bộ chia A4), train `q4b_ho
 
 ## 4. Bản đã gộp LoRA và A7a (đã làm)
 - **Gộp LoRA vào Qwen3-4B:** dev trùng hoàn toàn (66,82 sạch, 56,98 ASR), 4,0225B tham số, một file `model.safetensors` (khoảng 8 GB) sha256 `652e96ae…`. Đủ điều kiện làm bài nộp (BTC không cho đưa base model vào image).
+- **Nộp public lần 2 (13/11): 48,74** (lần 1: 48,56), bằng đầu ra của đường chạy cuối (ASR sống, bản gộp): không tệ đi, xác nhận bản gộp và ASR chạy sống dùng được cho bài nộp.
 - **A7a (public_test 634 mẫu, ASR sống, 3 lần):** trùng câu trả lời, hash 634/634, 0 lệnh bị từ chối, **mẫu chậm nhất 5,67 s**; **48/634 dòng khác `sub_public_v1.jsonl`** (nguyên nhân chưa tách: gộp bf16 hay ASR sống). Đo trên Blackwell 97 GB, chưa phải máy chấm.
 
 ## 5. Đóng gói nộp (BTC hướng dẫn 10/11)
