@@ -37,9 +37,10 @@ Sinh 4000 mẫu (giữ 1550; dùng được 907 cho bộ chia A4), train `q4b_ho
 | Mục | Tình trạng |
 |---|---|
 | Khung `/code` (predict.sh, predict.py, notebook, README, training_code) | **đã viết và chạy thử trong Docker với model nhỏ** (GPU, hai lần giống nhau, notebook, Jupyter) |
-| Dockerfile (CUDA 13.2, không ENTRYPOINT, torch 2.11.0, đã gỡ `cuda-compat`) | **đã dựng và thử với model nhỏ** (20 GB); bản thật chưa dựng |
+| Dockerfile (CUDA 13.2, torch 2.11.0 cu130, đã gỡ `cuda-compat`) | **đã dựng bản thật** `zac2026_ManchesterCity.tar.gz` (13,06 GB, MD5 `6e2d32ad90bde460c0528ac60300179b`), có LLM và ASR đã gộp, hash khớp `models.lock.json` |
 | Gộp LoRA vào Qwen3-4B (`scripts/merge_lora.py`) | **xong**, dev trùng; trọng số đang ở bạn kia, **chờ chuyển qua Drive** |
-| Test Solution của BTC | 1 lượt/ngày, **đóng 23:59 ngày 15/11** |
+| Test Solution của BTC | **ĐẠT ngày 14/11** (16:02, test time 5 phút, MD5 `6e2d32ad…`); 1 lượt/ngày, đóng 23:59 ngày 15/11 |
+| Nộp chính thức | **việc kế tiếp**, xem `docs/NOP_CHINH_THUC.md` |
 | Nộp chính thức | **23:59 ngày 16/11**, tối đa 2 lượt, lượt cuối được chấm |
 | GPU của máy chấm | **chưa rõ** (RTX 5090 hay A30), cần hỏi BTC |
 | Dữ liệu huấn luyện trong gói | **cần quyết**: tôi đề xuất chỉ nộp mã tái tạo, không đăng dữ liệu dẫn xuất công khai |
