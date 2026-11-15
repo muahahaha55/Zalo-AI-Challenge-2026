@@ -80,3 +80,6 @@ Sinh 4000 mẫu (giữ 1550; dùng được 907 cho bộ chia A4), train `q4b_ho
 | Giải phóng ổ C: (còn 43 GB; cần khoảng 45 GB cho dựng và xuất), mở lại Docker Desktop | bạn |
 | Thư hỏi BTC (GPU chấm, dữ liệu huấn luyện, gộp LoRA) | bạn gửi, tôi soạn |
 | Chốt danh sách thành viên đội trước 00:00 ngày 16/11 | bạn |
+
+## 8. Thử cuối 15/11: A8 đầy đủ
+Phương cho thử train bản nộp có che tên (A8 trên toàn bộ train) để xem có tốt hơn bài hiện tại không. Chỉ thay bài nếu dev không tệ đi **và** bản mới qua Test Solution trước 23:59 ngày 15/11; bài hiện tại (MD5 `6e2d32ad…`, Test Solution đạt) là bài an toàn, không được xóa hay ghi đè. Hướng dẫn: `docs/HUONG_DAN_A8_FULL.md`, notebook `notebooks/a8-full.ipynb`.
