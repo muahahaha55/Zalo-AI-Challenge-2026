@@ -1,0 +1,23 @@
+## train (a8f_train_time.txt)
+thời gian train: 30797 s trên 4 GPU
+CHẠM GIỚI HẠN --max-hours 8,5: CHƯA ĐỦ 3 EPOCH, BẢN NÀY BỎ. Báo Phương.
+
+## GPU
+0, NVIDIA L4, 23034 MiB
+1, NVIDIA L4, 23034 MiB
+2, NVIDIA L4, 23034 MiB
+3, NVIDIA L4, 23034 MiB
+
+## gộp LoRA (bỏ thanh tiến trình)
+merged model saved to checkpoints/q4b_a8_merged: 4.0225B parameters, dtype bfloat16
+thời gian gộp: 22 s
+
+## đo dev, mỗi dòng một GPU (a8f_timing.txt; 4 GPU x 2 lần đo: sạch rồi ASR)
+done 39 samples; mean 3.64s p95 7.76s max 8.05s; stop reasons {'end': 35, 'ask': 3, 'invalid_call': 1}
+done 39 samples; mean 4.06s p95 7.78s max 9.93s; stop reasons {'end': 34, 'ask': 5}
+done 39 samples; mean 3.85s p95 7.46s max 8.75s; stop reasons {'end': 31, 'ask': 8}
+done 38 samples; mean 3.63s p95 7.12s max 10.12s; stop reasons {'end': 31, 'ask': 7}
+done 39 samples; mean 3.71s p95 7.75s max 8.45s; stop reasons {'end': 35, 'ask': 4}
+done 39 samples; mean 4.24s p95 8.00s max 10.13s; stop reasons {'end': 34, 'ask': 5}
+done 39 samples; mean 4.14s p95 7.95s max 9.13s; stop reasons {'end': 31, 'ask': 8}
+done 38 samples; mean 3.72s p95 7.27s max 10.31s; stop reasons {'end': 31, 'ask': 7}

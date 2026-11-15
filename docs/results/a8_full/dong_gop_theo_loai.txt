@@ -1,0 +1,6 @@
+Phân rã chênh dev sạch (68,94 so với mốc 66,82) theo loại mẫu: chênh trung bình của loại x (n/155).
+Mốc theo loại lấy từ F-6: oos 58,33; ask 75,64; exec 65,73.
+oos   n= 12  58,33 -> 83,33  đóng góp +1,94
+ask   n= 26  75,64 -> 73,08  đóng góp -0,43
+exec  n=117  65,73 -> 66,54  đóng góp +0,61
+tổng                                    +2,12

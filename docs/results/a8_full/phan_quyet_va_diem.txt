@@ -1,0 +1,33 @@
+## phán quyết F-6 (nguyên văn)
+dev sạch      :  68.94  (mốc 66,82)  ask  73.08 (mốc 75,64)  exec  66.54 (65,73)  oos  83.33 (58,33)
+dev ASR ft    :  58.43  (mốc 56,98)  ask  65.38  exec  56.90  oos  58.33
+(1) sạch >= 66,82: ĐẠT   (2) ASR >= 56,98: ĐẠT   (3) ask >= 70,64: ĐẠT
+=> A8 ĐẦY ĐỦ ĐẠT điều kiện dev: gửi sha256 và chuyển q4b_a8_merged cho người dựng image (Phương quyết)
+
+## dev sạch (a8f_eval_clean.txt)
+N=155  score=68.94
+  gold_calls=0     n=   12  mean= 83.33
+  gold_calls=1     n=   45  mean= 79.26
+  gold_calls=2     n=   47  mean= 62.77
+  gold_calls=3     n=   30  mean= 56.30
+  gold_calls=4     n=   14  mean= 57.14
+  gold_calls=5     n=    7  mean= 97.14
+  history=False    n=   49  mean= 76.51
+  history=True     n=  106  mean= 65.44
+  kind=ask         n=   26  mean= 73.08
+  kind=exec        n=  117  mean= 66.54
+  kind=oos         n=   12  mean= 83.33
+
+## dev ASR phowl_ft (a8f_eval_phowl_ft.txt)
+N=155  score=58.43
+  gold_calls=0     n=   12  mean= 58.33
+  gold_calls=1     n=   45  mean= 69.63
+  gold_calls=2     n=   47  mean= 54.26
+  gold_calls=3     n=   30  mean= 48.30
+  gold_calls=4     n=   14  mean= 51.79
+  gold_calls=5     n=    7  mean= 71.43
+  history=False    n=   49  mean= 65.86
+  history=True     n=  106  mean= 55.00
+  kind=ask         n=   26  mean= 65.38
+  kind=exec        n=  117  mean= 56.90
+  kind=oos         n=   12  mean= 58.33

@@ -1,0 +1,7 @@
+augmentation -> sft_train_aug.jsonl: 100 samples (100 synthetic oos, 0 variants)
+name masking -> sft_train_mask.jsonl: 1390 samples; {'masked': 1390, 'skipped_unknown_tool': 0, 'asr': 655}
+groups=1265 train=1390 dev=155 (dev groups=141)
+73da3ee722669c9a207fdb84f65b469771037fb2b4abfaa82d7f795e3f1384cb  data/processed/sft_train.jsonl
+075bb9b503020ff25e40dce1b64cacb3f58514d1aea6cb38861221ef2aaa9cc9  data/processed/sft_train_asr.jsonl
+d6e0e897720a875545d72ce8a4c4086453d286e449f10f08fe5b94d028480209  data/processed/sft_train_aug.jsonl
+451826b4a3d9ad87661f8c6f4aadfe66f3f679f88215340c002670764985f53f  data/processed/sft_train_mask.jsonl
