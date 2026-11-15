@@ -2,7 +2,7 @@
 
 **Tình trạng:** Test Solution ngày 14/11 **đạt** ("Test passed. Your solution runs correctly", test time 5 phút) với tệp `zac2026_ManchesterCity.tar.gz`, MD5 `6e2d32ad90bde460c0528ac60300179b`. Tệp đang ở Drive của chủ dự án (link do chủ dự án gửi riêng, không ghi vào repo vì nó dẫn tới trọng số).
 
-**Hạn:** 23:59 ngày 16/11. **Danh sách thành viên đội phải chốt trước 00:00 ngày 16/11** (cổng khóa sau đó); không xóa thành viên nào.
+**Cổng nộp chỉ mở trong ngày 16/11** (form chưa hiện trên trang Test Solution trước đó). **Hạn:** 23:59 ngày 16/11; nộp ngay buổi sáng, không đợi tối. Image dựng từ commit sạch `98d3199` (ghi trong `training_code/COMMIT.txt` của image, git tag `submission-v1`). **Danh sách thành viên đội phải chốt trước 00:00 ngày 16/11** (cổng khóa sau đó); không xóa thành viên nào.
 
 ## Các bước
 1. Đăng nhập cổng cuộc thi bằng tài khoản thành viên của đội, mở form **Solution Submission** (không phải Test Solution).
