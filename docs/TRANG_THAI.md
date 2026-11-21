@@ -85,3 +85,6 @@ Sinh 4000 mẫu (giữ 1550; dùng được 907 cho bộ chia A4), train `q4b_ho
 Phương cho thử train bản nộp có che tên (A8 trên toàn bộ train) để xem có tốt hơn bài hiện tại không. Chỉ thay bài nếu dev không tệ đi **và** bản mới qua Test Solution trước 23:59 ngày 15/11; bài hiện tại (MD5 `6e2d32ad…`, Test Solution đạt) là bài an toàn, không được xóa hay ghi đè. Hướng dẫn: `docs/HUONG_DAN_A8_FULL.md`, notebook `notebooks/a8-full.ipynb`.
 
 **Kết quả (15/11 đêm):** dev sạch 68,94 và ASR 58,43 (mốc 66,82 và 56,98), nhưng train dừng ở epoch 2,886 và phần tăng chủ yếu từ oos (nằm trong nhiễu); không kịp Test Solution. **Quyết định: nộp v1 (MD5 `6e2d32ad…`) ngày 16/11.** Chi tiết: `docs/BAN_GIAO_A8_FULL.md`.
+
+## 9. Vòng private (20 đến 23/11)
+private_test (625 mẫu) đã nhận và kiểm ngày 21/11: đủ dữ liệu, nhưng 19/65 app không có trong train và 37% mẫu có lịch sử dài, nên kỳ vọng thấp hơn public. Chạy đúng bài đã nộp (`submission-v1`) bằng `notebooks/private-run.ipynb`, nộp JSONL ở mục Submission **trước 23:59 ngày 23/11**. Hướng dẫn: `docs/HUONG_DAN_PRIVATE.md`.
